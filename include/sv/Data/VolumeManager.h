@@ -12,15 +12,17 @@ public:
     IVolumeManager()=default;
     virtual void setupTransferFunc(std::map<double,std::array<double,4>> color_setting)=0;
     virtual void setupVolumeData(const char* file_path)=0;
-
+    virtual std::vector<float>& getTransferFunc(bool preInt=false)=0;
+    virtual std::vector<uint8_t>& getVolumeData()=0;
+    virtual std::array<uint32_t,3>& getVolumeDim()=0;
 protected:
     /**
      * Every volume manager have a transfer function
      */
-    std::unique_ptr<TransferFunc> tf;
+    std::unique_ptr<sv::TransferFunc> tf;
     /**
      * Every volume manager have a volume_data object
      */
-    std::unique_ptr<IVolumeData> volume_data;
+    std::shared_ptr<IVolumeData> volume_data;
 };
 #endif //VOLUMERENDER_VOLUMEMANAGER_H

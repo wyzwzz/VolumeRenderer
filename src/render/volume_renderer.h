@@ -9,9 +9,9 @@
 #include<sv/Render/VolumeRenderer.h>
 class VolumeRenderer{
 public:
-    VolumeRenderer()=default;
+    VolumeRenderer(IVolumeRenderer* renderer){impl.reset(renderer);}
 
-    void setupResource(const char* volume_file_path,std::map<double,std::tuple<double>> color_setting);
+    void setupResource(const char* volume_file_path,std::map<double,std::array<double,4>> color_setting);
     void init();
     void render();
 
