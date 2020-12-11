@@ -12,13 +12,13 @@
 namespace sv{
     class TransferFunc{
     public:
-        explicit TransferFunc(std::map<double,std::array<double,4>> color_setting):color_setting(color_setting){};
+        explicit TransferFunc(std::map<uint8_t ,std::array<double,4>> color_setting):color_setting(color_setting){};
         auto getTransferFunction()->std::vector<float>&{
             if(transfer_func.empty())
                 generateTransferFunc();
             return transfer_func;
         }
-        void resetTransferFunc(std::map<double,std::array<double,4>> color_setting){
+        void resetTransferFunc(std::map<uint8_t,std::array<double,4>> color_setting){
             this->color_setting=color_setting;
             transfer_func.clear();
             preint_transfer_func.clear();
@@ -32,7 +32,7 @@ namespace sv{
         void generateTransferFunc();
         void generatePreIntTransferFunc();
     private:
-        std::map<double,std::array<double,4>> color_setting;
+        std::map<uint8_t,std::array<double,4>> color_setting;
         std::vector<float> transfer_func;
         std::vector<float> preint_transfer_func;
         const int base_sampler_number=20;
@@ -42,9 +42,9 @@ namespace sv{
     inline void TransferFunc::generateTransferFunc()
     {
         transfer_func.resize(TF_DIM*4);
-        std::vector<int> keys;
+        std::vector<uint8_t> keys;
         for(auto it:color_setting)
-            keys.emplace_back(it.first*(TF_DIM-1));
+            keys.emplace_back(it.first);
         size_t size=keys.size();
         for(size_t i=0;i<keys[0];i++){
             transfer_func[i*4+0]=color_setting[keys[0]][0];
@@ -62,11 +62,14 @@ namespace sv{
             int left=keys[i-1],right=keys[i];
             auto left_color=color_setting[left];
             auto right_color=color_setting[right];
+
             for(size_t j=left;j<=right;j++){
                 transfer_func[j*4+0]=1.0f*(j-left)/(right-left)*right_color[0]+1.0f*(right-j)/(right-left)*left_color[0];
+                transfer_func[j*4+1]=1.0f*(j-left)/(right-left)*right_color[1]+1.0f*(right-j)/(right-left)*left_color[1];
+                transfer_func[j*4+2]=1.0f*(j-left)/(right-left)*right_color[2]+1.0f*(right-j)/(right-left)*left_color[2];
+                transfer_func[j*4+3]=1.0f*(j-left)/(right-left)*right_color[3]+1.0f*(right-j)/(right-left)*left_color[3];
             }
         }
-        std::cout<<"finish generating transfer function"<<std::endl;
     }
 
     inline void TransferFunc::generatePreIntTransferFunc()

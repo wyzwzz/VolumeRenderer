@@ -9,7 +9,11 @@
 #include<sv/Render/VolumeRenderer.h>
 #include<data/simple_volume_manager.h>
 #include<sv/Render/Shader.h>
-
+#include<sv/Control/Controller.h>
+#include<string>
+#include<imgui.h>
+#include<imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 #define TF_TEXTURE_BINDING 0
 #define PREINT_TF_TEXTURE_BINDING 1
 #define ENTRYPOS_TEXTURE_BINDING 2
@@ -17,6 +21,12 @@
 #define VOLUMEDATA_TEXTURE_BINDING 4
 #define ENTRYPOS_IMAGE_BINDING 0
 #define EXITPOS_IMAGE_BINDING 1
+
+
+#define RAYCAST_POS_FRAG "/home/wyz/CLionProjects/VolumeRenderer/src/render/shader/raycast_pos_f.glsl"
+#define RAYCAST_POS_VERT "/home/wyz/CLionProjects/VolumeRenderer/src/render/shader/raycast_pos_v.glsl"
+#define RAYCASTING_FRAG "/home/wyz/CLionProjects/VolumeRenderer/src/render/shader/raycasting_f.glsl"
+#define RAYCASTING_VERT "/home/wyz/CLionProjects/VolumeRenderer/src/render/shader/raycasting_v.glsl"
 
 /**
  * raw volume data renderer, no accelerate
@@ -26,10 +36,13 @@ public:
     SimpleVolumeRenderer()
     :window_width(1200),window_height(900)
     {
+        initGL();
         volume_manager=std::make_unique<SimpleVolumeManager>();
+        raycastpos_shader=std::make_unique<sv::Shader>(RAYCAST_POS_VERT,RAYCAST_POS_FRAG);
+        raycasting_shader=std::make_unique<sv::Shader>(RAYCASTING_VERT,RAYCASTING_FRAG);
     }
     void setupVolume(const char* file_path) override ;
-    void setupTransferFunc(std::map<double,std::array<double,4>> color_setting) override;
+    void setupTransferFunc(std::map<uint8_t,std::array<double,4>> color_setting) override;
     void init() override;
     void render() override;
     void setupController() override;
@@ -38,6 +51,7 @@ public:
     void setupProxyCube(GLfloat x,GLfloat y,GLfloat z);
     void setupScreenQuad();
     void setupRaycastPosFramebuffer();
+    void setupShaderUniform();
 public:
     void deleteGLResource();
     ~SimpleVolumeRenderer();

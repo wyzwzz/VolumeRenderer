@@ -3,7 +3,7 @@
 //
 #include"volume_renderer.h"
 
-void VolumeRenderer::setupResource(const char *volume_file_path, std::map<double, std::array<double,4>> color_setting)
+void VolumeRenderer::setupResource(const char *volume_file_path, std::map<uint8_t, std::array<double,4>> color_setting)
 {
     impl->setupVolume(volume_file_path);
     impl->setupTransferFunc(color_setting);

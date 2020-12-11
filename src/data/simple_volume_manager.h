@@ -9,7 +9,7 @@
 #include<io/RawVolumeReader.h>
 class SimpleVolumeManager: public IVolumeManager{
 public:
-    void setupTransferFunc(std::map<double,std::array<double,4> > color_setting){
+    void setupTransferFunc(std::map<uint8_t,std::array<double,4> > color_setting){
         if(!tf.get())
             tf=std::make_unique<sv::TransferFunc>(color_setting);
         else

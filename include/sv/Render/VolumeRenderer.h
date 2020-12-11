@@ -9,7 +9,7 @@
 class IVolumeRenderer{
 public:
     virtual void setupVolume(const char* file_path)=0;
-    virtual void setupTransferFunc(std::map<double,std::array<double,4>> color_setting)=0;
+    virtual void setupTransferFunc(std::map<uint8_t,std::array<double,4>> color_setting)=0;
     virtual void init()=0;
     virtual void render()=0;
 protected:

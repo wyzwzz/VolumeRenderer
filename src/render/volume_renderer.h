@@ -11,7 +11,7 @@ class VolumeRenderer{
 public:
     VolumeRenderer(IVolumeRenderer* renderer){impl.reset(renderer);}
 
-    void setupResource(const char* volume_file_path,std::map<double,std::array<double,4>> color_setting);
+    void setupResource(const char* volume_file_path,std::map<uint8_t,std::array<double,4>> color_setting);
     void init();
     void render();
 

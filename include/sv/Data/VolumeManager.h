@@ -10,7 +10,7 @@
 class IVolumeManager{
 public:
     IVolumeManager()=default;
-    virtual void setupTransferFunc(std::map<double,std::array<double,4>> color_setting)=0;
+    virtual void setupTransferFunc(std::map<uint8_t,std::array<double,4>> color_setting)=0;
     virtual void setupVolumeData(const char* file_path)=0;
     virtual std::vector<float>& getTransferFunc(bool preInt=false)=0;
     virtual std::vector<uint8_t>& getVolumeData()=0;

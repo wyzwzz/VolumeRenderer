@@ -79,7 +79,6 @@ namespace sv{
         const char* fShaderCode=fragmentCode.c_str();
 
         unsigned int vShader,fShader,gShader;
-
         vShader=glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vShader,1,&vShaderCode,NULL);
         glCompileShader(vShader);

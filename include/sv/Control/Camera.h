@@ -7,6 +7,7 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/matrix_transform.hpp>
 #include<math.h>
+#include<iostream>
 namespace sv{
     class Camera{
     public:
@@ -22,15 +23,17 @@ namespace sv{
         Camera(glm::vec3 camera_pos):
         pos(camera_pos),up(glm::vec3(0.0f,1.0f,0.0f)),
         front(glm::vec3(0.0f,0.0f,-1.0f)),
-        right(glm::vec3(1.0f,0.0f,0.0f)),
-        world_up(up),
+//        right(glm::vec3(1.0f,0.0f,0.0f)),
+        world_up(glm::vec3(0.0f,1.0f,0.0f)),
         yaw(-90.0f),pitch(0.0f),
         move_speed(0.03f),
         mouse_sensitivity(0.1f),
         zoom(20.0f)
-        {}
+        {
+            updateCameraVectors();
+        }
 
-        auto getViewMatrix()->glm::mat4;
+        glm::mat4 getViewMatrix();
         void processMovementByKeyboard(CameraMoveDirection direction,float delta_t);
         void processMouseMovement(float xoffset,float yoffset);
         void processMouseScroll(float yoffset);
@@ -51,13 +54,19 @@ namespace sv{
         float move_speed;
         float mouse_sensitivity;
         float zoom;
+    public:
+        float getZoom(){return zoom;}
     };
-    inline auto Camera::getViewMatrix() -> glm::mat4
+    inline glm::mat4 Camera::getViewMatrix()
     {
+//        std::cout<<pos.x<<" "<<pos.y<<" "<<pos.z<<std::endl;
+//        std::cout<<front.x<<" "<<front.y<<" "<<front.z<<std::endl;
+//        std::cout<<up.x<<" "<<up.y<<" "<<up.z<<std::endl;
         return glm::lookAt(pos,pos+front,up);
     }
     inline void Camera::processMovementByKeyboard(CameraMoveDirection direction,float delta_t)
     {
+
         float ds=move_speed*delta_t;
         switch (direction) {
             case CameraMoveDirection::FORWARD: pos+=front*ds;break;
@@ -84,7 +93,7 @@ namespace sv{
         if(zoom<0.1f)
             zoom=0.1f;
         if(zoom>45.0f)
-            zoom=45.0f
+            zoom=45.0f;
     }
     inline void Camera::processKeyboardForArgs(CameraDefinedKey arg)
     {
