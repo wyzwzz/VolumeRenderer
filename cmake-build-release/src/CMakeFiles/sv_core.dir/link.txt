@@ -1,2 +1,0 @@
-/usr/bin/ar qc libsv_core.a CMakeFiles/sv_core.dir/data/transfer_func.cpp.o CMakeFiles/sv_core.dir/data/simple_volume_data.cpp.o CMakeFiles/sv_core.dir/render/simple_volume_renderer.cpp.o CMakeFiles/sv_core.dir/render/block_volume_renderer.cpp.o CMakeFiles/sv_core.dir/render/volume_renderer.cpp.o CMakeFiles/sv_core.dir/control/Controller.cpp.o CMakeFiles/sv_core.dir/__/third_party/glad/src/glad.c.o
-/usr/bin/ranlib libsv_core.a

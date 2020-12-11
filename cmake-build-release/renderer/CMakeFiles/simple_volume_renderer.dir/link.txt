@@ -1,1 +1,0 @@
-/usr/bin/g++ -O3 -DNDEBUG CMakeFiles/simple_volume_renderer.dir/main.cpp.o -o simple_volume_renderer  ../src/libsv_core.a -ldl -lglfw3 -lpthread ../libimgui.a 
