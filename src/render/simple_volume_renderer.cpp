@@ -70,7 +70,7 @@ void SimpleVolumeRenderer::setupShaderUniform()
 
     raycasting_shader->setFloat("ka",0.5f);
     raycasting_shader->setFloat("kd",0.8f);
-    raycasting_shader->setFloat("shininess",64.0f);
+    raycasting_shader->setFloat("shininess",100.0f);
     raycasting_shader->setFloat("ks",1.0f);
     raycasting_shader->setVec3("light_direction",glm::normalize(glm::vec3(-1.0f,-1.0f,-1.0f)));
 

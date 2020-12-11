@@ -1,0 +1,9 @@
+/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/CMakeFiles/rebuild_cache.dir
+/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/CMakeFiles/edit_cache.dir
+/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/CMakeFiles/imgui.dir
+/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/CMakeFiles/rebuild_cache.dir
+/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/CMakeFiles/edit_cache.dir
+/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/CMakeFiles/sv_core.dir
+/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/CMakeFiles/rebuild_cache.dir
+/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/CMakeFiles/edit_cache.dir
+/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/CMakeFiles/simple_volume_renderer.dir

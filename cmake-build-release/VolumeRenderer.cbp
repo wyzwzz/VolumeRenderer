@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="VolumeRenderer"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\third_party\;CMake Files\src\;CMake Files\renderer\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="imgui">
+				<Option output="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/libimgui.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./third_party/glad/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 imgui"/>
+					<CompileFile command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="imgui/fast">
+				<Option output="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/libimgui.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./third_party/glad/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 imgui/fast"/>
+					<CompileFile command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="sv_core">
+				<Option output="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/libsv_core.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./third_party/glad/include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/examples"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/Makefile&quot;  VERBOSE=1 sv_core"/>
+					<CompileFile command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="sv_core/fast">
+				<Option output="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/libsv_core.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./third_party/glad/include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/examples"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/Makefile&quot;  VERBOSE=1 sv_core/fast"/>
+					<CompileFile command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="simple_volume_renderer">
+				<Option output="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/simple_volume_renderer" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./third_party/glad/include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/examples"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/Makefile&quot;  VERBOSE=1 simple_volume_renderer"/>
+					<CompileFile command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="simple_volume_renderer/fast">
+				<Option output="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/simple_volume_renderer" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/./third_party/glad/include"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src"/>
+					<Add directory="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/examples"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/x86_64-pc-linux-gnu"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/../../../../include/c++/10.2.0/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-linux-gnu/10.2.0/include-fixed"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/Makefile&quot;  VERBOSE=1 simple_volume_renderer/fast"/>
+					<CompileFile command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j20 -f &quot;/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/renderer/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/examples/imgui_impl_glfw.cpp">
+			<Option target="imgui"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/examples/imgui_impl_glfw.h">
+			<Option target="imgui"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/examples/imgui_impl_opengl3.cpp">
+			<Option target="imgui"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/examples/imgui_impl_opengl3.h">
+			<Option target="imgui"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/imgui.cpp">
+			<Option target="imgui"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/imgui.h">
+			<Option target="imgui"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/imgui_demo.cpp">
+			<Option target="imgui"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/imgui_draw.cpp">
+			<Option target="imgui"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/cmake-build-release/_deps/imgui-src/imgui_widgets.cpp">
+			<Option target="imgui"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/renderer/main.cpp">
+			<Option target="simple_volume_renderer"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/control/Controller.cpp">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/data/simple_volume_data.cpp">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/data/simple_volume_data.h">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/data/transfer_func.cpp">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/render/block_volume_renderer.cpp">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/render/block_volume_renderer.h">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/render/simple_volume_renderer.cpp">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/render/simple_volume_renderer.h">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/render/volume_renderer.cpp">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/render/volume_renderer.h">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/third_party/glad/src/glad.c">
+			<Option target="sv_core"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/third_party/imgui.cmake">
+			<Option virtualFolder="CMake Files\third_party\"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/src/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\src\"/>
+		</Unit>
+		<Unit filename="/home/wyz/CLionProjects/VolumeRenderer/renderer/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\renderer\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

@@ -11,6 +11,8 @@ int main() {
     color_map[216]={127/255.0,63/255.0,27/255.0,0.3};
     color_map[255]={0.0,0.0,0.0,0.0};
 
+
+
     try{
         VolumeRenderer volumeRenderer=SimpleVolumeRendererFactory::CreateSimpleVolumeRenderer();
         volumeRenderer.setupResource(filename,color_map);
