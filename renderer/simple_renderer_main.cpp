@@ -2,7 +2,7 @@
 #include <tool/volume_renderer_factory.h>
 int main() {
     std::cout << "Simple Volume Render!" << std::endl;
-    const char* filename="foot_256_256_256_uint8.raw";
+    const char* filename="aneurism_256_256_256_uint8.raw";
 
     std::map<uint8_t ,std::array<double,4>> color_map;
     color_map[0]={0.0,0.0,0.0,0.0};
