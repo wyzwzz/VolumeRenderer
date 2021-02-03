@@ -23,10 +23,10 @@
 #define EXITPOS_IMAGE_BINDING 1
 
 
-#define RAYCAST_POS_FRAG "/home/wyz/CLionProjects/VolumeRenderer/src/render/shader/raycast_pos_f.glsl"
-#define RAYCAST_POS_VERT "/home/wyz/CLionProjects/VolumeRenderer/src/render/shader/raycast_pos_v.glsl"
-#define RAYCASTING_FRAG "/home/wyz/CLionProjects/VolumeRenderer/src/render/shader/raycasting_f.glsl"
-#define RAYCASTING_VERT "/home/wyz/CLionProjects/VolumeRenderer/src/render/shader/raycasting_v.glsl"
+#define RAYCAST_POS_FRAG "C:/Users/wyz/projects/VolumeRenderer/src/render/shader/raycast_pos_f.glsl"
+#define RAYCAST_POS_VERT "C:/Users/wyz/projects/VolumeRenderer/src/render/shader/raycast_pos_v.glsl"
+#define RAYCASTING_FRAG "C:/Users/wyz/projects/VolumeRenderer/src/render/shader/raycasting_f.glsl"
+#define RAYCASTING_VERT "C:/Users/wyz/projects/VolumeRenderer/src/render/shader/raycasting_v.glsl"
 
 /**
  * raw volume data renderer, no accelerate

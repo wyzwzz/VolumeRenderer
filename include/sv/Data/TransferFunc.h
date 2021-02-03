@@ -8,6 +8,7 @@
 #include<vector>
 #include<math.h>
 #include<iostream>
+#include<array>
 #define TF_DIM 256
 namespace sv{
     class TransferFunc{

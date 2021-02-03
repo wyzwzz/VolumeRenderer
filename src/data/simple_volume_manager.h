@@ -15,7 +15,7 @@ public:
         else
             tf->resetTransferFunc(color_setting);
     }
-       auto getTransferFunc(bool preInt=false)->std::vector<float>&{
+    auto getTransferFunc(bool preInt=false)->std::vector<float>&{
         if(!preInt)
             return tf->getTransferFunction();
         else

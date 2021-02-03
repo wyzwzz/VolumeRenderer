@@ -1,6 +1,8 @@
 #include <iostream>
+#include <string>
 #include <tool/volume_renderer_factory.h>
-int main() {
+int main(int argc,char** argv)
+{
     std::cout << "Simple Volume Render!" << std::endl;
     const char* filename="aneurism_256_256_256_uint8.raw";
 

@@ -23,5 +23,11 @@ target_include_directories(sv_core PRIVATE
         ${IMGUI_INCLUDE_DIR}
         ${IMGUI_ROOT}/examples)
 
+#target_link_directories(sv_core PRIVATE ${CMAKE_BINARY_DIR}/third_party/glfw/src)
+find_library(GLFW_LIBS glfw3
+        HINTS ${CMAKE_BINARY_DIR}/third_party/glfw/src)
+
+message(STATUS ${GLFW_LIBS})
+
 target_link_libraries(sv_core PRIVATE
-        dl glfw3 pthread imgui)
+        ${GLFW_LIBS}  ${CMAKE_DL_LIBS}  imgui)
