@@ -28,6 +28,7 @@
 
 #else
 #define GL_EXPR(exec) exec
+#define GL_CHECK
 #endif
 
 #endif //VOLUMERENDERER_HELP_GL_H

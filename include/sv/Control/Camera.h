@@ -112,6 +112,25 @@ namespace sv{
         right=glm::normalize(glm::cross(front,world_up));
         up=glm::normalize(glm::cross(right,front));
     }
+
+    class RayCastCamera{
+    public:
+        RayCastCamera()=default;
+
+    protected:
+        glm::vec3 view_pos;
+        glm::vec3 view_direction;
+        glm::vec3 up,right;
+        glm::vec3 world_up;
+        float n,f;
+        float space_x,space_y;//x-direction and y-direction gap distance between two rays
+    };
+    class RayCastOrthoCamera: public RayCastCamera{
+
+    };
+    class RayCastPerspectCamera: public RayCastCamera{
+
+    };
 }
 
 #endif //VOLUMERENDERER_CAMERA_H

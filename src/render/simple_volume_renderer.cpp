@@ -2,6 +2,32 @@
 //
 #include"simple_volume_renderer.h"
 #include<utils/help_gl.h>
+#include<VoxelCompression/voxel_compress/VoxelCompress.h>
+#include<VoxelCompression/voxel_uncompress/VoxelUncompress.h>
+#include<utils/help_cuda.h>
+#include<cudaGL.h>
+#include<windows.h>
+#include<sv/Utils/common.h>
+#define volume_file_name_0 "aneurism_256_256_256_uint8.raw"
+#define volume_0_len 256*256*256
+
+
+
+bool readVolumeData(uint8_t* &data, int64_t& len)
+{
+    std::fstream in(volume_file_name_0,std::ios::in|std::ios::binary);
+    if(!in.is_open()){
+        throw std::runtime_error("file open failed");
+    }
+    in.seekg(0,std::ios::beg);
+    data=new uint8_t[volume_0_len];
+    len=in.read(reinterpret_cast<char*>(data),volume_0_len).gcount();
+    if(len==volume_0_len)
+        return true;
+    else
+        return false;
+}
+
 void SimpleVolumeRenderer::setupVolume(const char *file_path)
 {
     volume_manager->setupVolumeData(file_path);
@@ -14,9 +40,85 @@ void SimpleVolumeRenderer::setupVolume(const char *file_path)
     glTexParameteri(GL_TEXTURE_3D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_EDGE);
     auto dim=volume_manager->getVolumeDim();
-    glTexImage3D(GL_TEXTURE_3D,0,GL_RED,dim[0],dim[1],dim[2],0,GL_RED,GL_UNSIGNED_BYTE,volume_manager->getVolumeData().data());
+//    glTexImage3D(GL_TEXTURE_3D,0,GL_RED,dim[0],dim[1],dim[2],0,GL_RED,GL_UNSIGNED_BYTE,volume_manager->getVolumeData().data());
+    glTexImage3D(GL_TEXTURE_3D,0,GL_RED,dim[0],dim[1],dim[2],0,GL_RED,GL_UNSIGNED_BYTE,nullptr);
     std::cout<<volume_manager->getVolumeData().size()<<std::endl;
     GL_CHECK
+
+    /**
+     * test for map gl texture to cuda array
+     */
+
+    VoxelCompressOptions cmp_opts;
+    cmp_opts.height=256;
+    cmp_opts.width=256;
+    cmp_opts.input_buffer_format=NV_ENC_BUFFER_FORMAT_NV12;
+    VoxelCompress v_cmp(cmp_opts);
+    uint8_t* data=nullptr;
+    int64_t len=0;
+    readVolumeData(data,len);
+    std::vector<std::vector<uint8_t>> packets;
+    v_cmp.compress(data,len,packets);
+    int64_t cmp_size=0;
+    for(size_t i=0;i<packets.size();i++){
+        cmp_size+=packets[i].size();
+    }
+    std::cout<<"packets size is: "<<cmp_size<<std::endl;
+
+    std::cout<<"uncompress"<<std::endl;
+    CUDA_DRIVER_API_CALL(cuInit(0));
+    CUdevice cuDevice=0;
+    CUDA_DRIVER_API_CALL(cuDeviceGet(&cuDevice, 0));
+    CUcontext cuContext = nullptr;
+    CUDA_DRIVER_API_CALL(cuCtxCreate(&cuContext,0,cuDevice));
+    uint8_t* res_ptr=nullptr;
+    int64_t length=256*256*256;
+    CUDA_DRIVER_API_CALL(cuMemAlloc((CUdeviceptr*)&res_ptr,length));//driver api prefix cu
+//    cudaMalloc((void**)(CUdeviceptr*)&res_ptr,length);//runtime api prefix cuda
+
+    VoxelUncompressOptions opts;
+    opts.height=256;
+    opts.width=256;
+    opts.cu_ctx=cuContext;
+    VoxelUncompress v_uncmp(opts);
+    START_CPU_TIMER
+    v_uncmp.uncompress(res_ptr,length,packets);
+    END_CPU_TIMER
+//    std::vector<uint8_t> uncmp_res;
+//    uncmp_res.resize(length);
+//    checkCUDAErrors(cuMemcpyDtoH(uncmp_res.data(), (CUdeviceptr)(res_ptr), length));
+//    std::fstream out("uncmpres_256_256_256_uint8.raw.test",std::ios::out|std::ios::binary);
+//    out.write(reinterpret_cast<const char *>(uncmp_res.data()), uncmp_res.size());
+//    out.close();
+    print("LOG: ","finish uncompress");
+
+    START_CUDA_DRIVER_TIMER
+
+    CUgraphicsResource cuResource;
+    CUDA_DRIVER_API_CALL(cuGraphicsGLRegisterImage(&cuResource, volume_tex,GL_TEXTURE_3D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
+    CUDA_DRIVER_API_CALL(cuGraphicsMapResources(1, &cuResource, 0));
+    CUarray cu_array;
+    CUDA_DRIVER_API_CALL(cuGraphicsSubResourceGetMappedArray(&cu_array,cuResource,0,0));
+    CUDA_MEMCPY3D m = { 0 };
+    m.srcMemoryType=CU_MEMORYTYPE_DEVICE;
+    m.srcDevice=(CUdeviceptr)res_ptr;
+//    Sleep(10);
+    m.dstMemoryType=CU_MEMORYTYPE_ARRAY;
+    m.dstArray=cu_array;
+    m.WidthInBytes=256;
+    m.Height=256;
+    m.Depth=256;
+
+
+
+    CUDA_DRIVER_API_CALL(cuMemcpy3D(&m));
+
+    CUDA_DRIVER_API_CALL(cuGraphicsUnmapResources(1, &cuResource, 0));//sync
+
+
+    CUDA_DRIVER_API_CALL(cuGraphicsUnregisterResource(cuResource));
+
+    STOP_CUDA_DRIVER_TIMER
 }
 
 void SimpleVolumeRenderer::setupTransferFunc(std::map<uint8_t, std::array<double, 4>> color_setting)
@@ -146,7 +248,7 @@ void SimpleVolumeRenderer::initGL()
 
 //    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
+    glfwSwapInterval(1);
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to initialize GLAD" << std::endl;
         glfwTerminate();

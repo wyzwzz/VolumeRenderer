@@ -3,7 +3,7 @@
 //
 #include <iostream>
 #include <tool/volume_renderer_factory.h>
-#include<mpi.h>
+//#include<mpi.h>
 int main(int argc,char** argv)
 {
     std::cout<<"Block Volume Render"<<std::endl;

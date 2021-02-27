@@ -7,6 +7,14 @@
 #include <sv/Data/TransferFunc.h>
 #include <sv/Data/VolumeData.h>
 #include <memory>
+struct BlockRequestInfo{
+    //uncompress and load new blocks
+    std::vector<std::array<uint32_t,3>> request_blocks_queue;
+    //stop task for no need blocks
+    std::vector<std::array<uint32_t,3>> noneed_blocks_queue;
+};
+
+
 class IVolumeManager{
 public:
     IVolumeManager()=default;
@@ -15,6 +23,8 @@ public:
     virtual std::vector<float>& getTransferFunc(bool preInt=false)=0;
     virtual std::vector<uint8_t>& getVolumeData()=0;
     virtual std::array<uint32_t,3>& getVolumeDim()=0;
+    virtual void setupBlockReqInfo(){};
+    virtual bool getBlock(){return false;};
 protected:
     /**
      * Every volume manager have a transfer function
