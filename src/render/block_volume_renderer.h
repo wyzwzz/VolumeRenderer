@@ -11,6 +11,14 @@
 #include<sv/Render/Shader.h>
 #include<sv/Control/Controller.h>
 #include<queue>
+#include<list>
+#include<unordered_set>
+#include<sv/Utils/boundingbox.h>
+struct Myhash{
+    std::size_t operator()(const sv::AABB& aabb) const {
+        return (aabb.index[0]<<16)+(aabb.index[1]<<8)+aabb.index[2];
+    }
+};
 class BlockVolumeRenderer: public IVolumeRenderer{
 public:
     BlockVolumeRenderer();
@@ -38,15 +46,24 @@ private:
 
     void deleteGLResource();
     void deleteGLTexture();
+
+    void createVirtualBoxes();
+    void createVolumeTexManager();
 private:
     void copyDeviceToTexture();
-
+    void updateCurrentBlocks(const sv::OBB& view_box);
 private:
     uint32_t block_length;
-    uint32_t view_depth_level;
+    uint32_t vol_tex_block_nx,vol_tex_block_ny;
+    uint32_t view_depth_level;//equal to volume texture num
+    std::array<uint32_t,3> dim;
+    std::vector<sv::AABB> virtual_blocks;
+
     std::vector<GLuint> volume_texes;
-    std::priority_queue<BlockTableItem> volume_tex_manager;
-    std::vector<std::array<uint32_t,3>> current_blocks;
+
+    std::list<BlockTableItem> volume_tex_manager;
+    std::unordered_set<sv::AABB,Myhash> current_blocks;
+    std::unordered_set<sv::AABB,Myhash> new_need_blocks,no_need_blocks;
     std::vector<CUgraphicsResource> cu_resources;
     CUcontext cu_context;
 
@@ -76,7 +93,7 @@ private:
     GLFWwindow *window;
     uint32_t window_width,window_height;
 
-    sv::RayCastOrthoCamera camera;
+    std::unique_ptr<sv::RayCastOrthoCamera> camera;
 
 };
 #endif //VOLUMERENDER_BLOCK_VOLUME_RENDERER_H

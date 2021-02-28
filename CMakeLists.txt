@@ -19,7 +19,7 @@ include(imgui)
 
 include_directories(./include ./third_party/glad/include ./third_party/glfw/include ./third_party/glm ./third_party/VolumeCompression/include)
 
-
+add_subdirectory(test)
 
 add_subdirectory(src)
 

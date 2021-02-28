@@ -8,17 +8,20 @@
 #include<glm/gtc/matrix_transform.hpp>
 #include<math.h>
 #include<iostream>
+#include<sv/Utils/boundingbox.h>
 namespace sv{
+    enum class CameraDefinedKey{
+        MOVE_FASTER,MOVE_SLOWER,
+        ROTATE_FASTER,ROTATE_SLOWER,
+        FAR,NEAR
+    };
+    enum class CameraMoveDirection{
+        FORWARD,BACKWARD,
+        LEFT,RIGHT,
+        UP,DOWN
+    };
     class Camera{
-    public:
-        enum class CameraDefinedKey{
-            FASTER,SLOWER
-        };
-        enum class CameraMoveDirection{
-            FORWARD,BACKWARD,
-            LEFT,RIGHT,
-            UP,DOWN
-        };
+
     public:
         Camera(glm::vec3 camera_pos):
         pos(camera_pos),up(glm::vec3(0.0f,1.0f,0.0f)),
@@ -97,10 +100,14 @@ namespace sv{
     }
     inline void Camera::processKeyboardForArgs(CameraDefinedKey arg)
     {
-        if(arg==CameraDefinedKey::FASTER)
+        if(arg==CameraDefinedKey::MOVE_FASTER)
             move_speed*=2;
-        else if(arg==CameraDefinedKey::SLOWER)
+        else if(arg==CameraDefinedKey::MOVE_SLOWER)
             move_speed/=2;
+        else if(arg==CameraDefinedKey::ROTATE_FASTER)
+            mouse_sensitivity*=2;
+        else if(arg==CameraDefinedKey::ROTATE_SLOWER)
+            mouse_sensitivity/=2;
     }
     inline void Camera::updateCameraVectors()
     {
@@ -116,18 +123,135 @@ namespace sv{
     class RayCastCamera{
     public:
         RayCastCamera()=default;
-
+        virtual void updateCameraVectors()=0;
     protected:
         glm::vec3 view_pos;
-        glm::vec3 view_direction;
-        glm::vec3 up,right;
-        glm::vec3 world_up;
+        glm::vec3 view_direction;//keep unit
+        glm::vec3 up,right;//keep unit
+        glm::vec3 world_up;//keep unit
         float n,f;
-        float space_x,space_y;//x-direction and y-direction gap distance between two rays
-    };
-    class RayCastOrthoCamera: public RayCastCamera{
+
+        float yaw,pitch;
+
+        float move_speed;
+        float move_sense;
+
 
     };
+    class RayCastOrthoCamera: public RayCastCamera{
+    public:
+        RayCastOrthoCamera(glm::vec3 view_pos,uint32_t half_w,uint32_t half_h):
+        RayCastCamera(),half_x_n(half_w),half_y_n(half_h)
+        {
+            this->view_pos=view_pos;
+            this->world_up=glm::vec3(0.f,1.f,0.f);
+            this->yaw=-90.f;
+            this->pitch=0.f;
+            this->move_speed=0.03f;
+            this->move_sense=0.05f;
+            this->space_x=this->space_y=1.f;
+
+            this->n=0.f;//assert!!!
+            this->f=256.f;
+
+            updateCameraVectors();
+        }
+        OBB getOBB(){
+            assert(this->n==0.f);
+            auto center_pos=view_pos+view_direction*(f+n)/2.f;
+            return OBB(center_pos,right,up,view_direction,half_x_n*space_x,half_y_n*space_y,(f+n)/2.f);
+        }
+        void setupOBB(OBB& obb){
+            assert(this->n==0.f);
+            obb.center_pos=view_pos+view_direction*(f+n)/2.f;;
+            obb.unit_x=right;
+            obb.unit_y=up;
+            obb.unit_z=view_direction;
+            obb.half_wx=half_x_n*space_x;
+            obb.half_wy=half_y_n*space_y;
+            obb.half_wz=(n+f)/2.f;
+            obb.updateHalfLenVec();
+        }
+
+        void processMovementByKey(CameraMoveDirection direction,float delta_t);
+        void processMouseMove(float xoffset,float yoffset);
+        void processMouseScroll(float yoffset);
+        void processKeyForArg(CameraDefinedKey arg);
+        void updateCameraVectors() override;
+    private:
+        float space_x,space_y;//x-direction and y-direction gap distance between two rays
+        uint32_t half_x_n, half_y_n;
+
+
+    };
+
+    inline void RayCastOrthoCamera::processMovementByKey(CameraMoveDirection direction, float delta_t) {
+        float ds=move_speed*delta_t;
+        switch (direction) {
+            case CameraMoveDirection::FORWARD: view_pos+=view_direction*ds;break;
+            case CameraMoveDirection::BACKWARD: view_pos-=view_direction*ds;break;
+            case CameraMoveDirection::LEFT: view_pos-=right*ds;break;
+            case CameraMoveDirection::RIGHT: view_pos+=right*ds;break;
+            case CameraMoveDirection::UP: view_pos+=up*ds;break;
+            case CameraMoveDirection::DOWN: view_pos-=up*ds;break;
+        }
+    }
+
+    inline void RayCastOrthoCamera::processMouseMove(float xoffset, float yoffset) {
+        yaw+=xoffset*move_sense;
+        pitch+=yoffset*move_sense;
+        if(pitch>60.0f)
+            pitch=60.0f;
+        if(pitch<-60.0f)
+            pitch=-60.0f;
+        updateCameraVectors();
+    }
+
+    inline void RayCastOrthoCamera::processMouseScroll(float yoffset) {
+        if(yoffset>0){
+            space_x*=1.05;
+            space_y*=1.05;
+        }
+        else{
+            space_x*=0.95;
+            space_y*=0.95;
+        }
+    }
+
+    inline void RayCastOrthoCamera::processKeyForArg(CameraDefinedKey arg) {
+        if(arg==CameraDefinedKey::MOVE_FASTER)
+            move_speed*=2;
+        else if(arg==CameraDefinedKey::MOVE_SLOWER)
+            move_speed/=2;
+        else if(arg==CameraDefinedKey::ROTATE_FASTER)
+            move_sense*=2;
+        else if(arg==CameraDefinedKey::ROTATE_SLOWER)
+            move_sense/=2;
+        else if(arg==CameraDefinedKey::FAR)
+            f*=1.1f;
+        else if(arg==CameraDefinedKey::NEAR)
+            f*=0.9f;
+    }
+
+    inline void RayCastOrthoCamera::updateCameraVectors() {
+        glm::vec3 f;
+        f.x=std::cos(glm::radians(yaw))*std::cos(glm::radians(pitch));
+        f.y=std::sin(glm::radians(pitch));
+        f.z=std::sin(glm::radians(yaw))*std::cos(glm::radians(pitch));
+        view_direction=glm::normalize(f);
+        right=glm::normalize(glm::cross(view_direction,world_up));
+        up=glm::normalize(glm::cross(right,view_direction));
+    }
+
+
+
+
+
+
+
+
+
+
     class RayCastPerspectCamera: public RayCastCamera{
 
     };

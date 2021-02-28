@@ -105,6 +105,9 @@ void SimpleVolumeRenderer::setupVolume(const char *file_path)
 //    Sleep(10);
     m.dstMemoryType=CU_MEMORYTYPE_ARRAY;
     m.dstArray=cu_array;
+    m.dstXInBytes=0;
+    m.dstY=0;
+    m.dstZ=0;
     m.WidthInBytes=256;
     m.Height=256;
     m.Depth=256;

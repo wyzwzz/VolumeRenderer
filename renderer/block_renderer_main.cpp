@@ -9,8 +9,16 @@ int main(int argc,char** argv)
     std::cout<<"Block Volume Render"<<std::endl;
 
     VolumeRenderer volumeRenderer=BlockVolumeRenderFactory::CreateBlockVolumeRenderer();
+
+    try{
+        volumeRenderer.init();
+        volumeRenderer.render();
+    }
+    catch (const std::exception &err) {
+        std::cout<<err.what()<<std::endl;
+    }
+
 //    MPI_Init(0,0);
-    char * vendor = (char*) glGetString(GL_VENDOR);
-    std::cout<<vendor<<std::endl;
+
     return 0;
 }
