@@ -8,16 +8,13 @@
 #include<array>
 #include<queue>
 #include<thread>
-#include<utils/help_cuda.h>
+
 #include<VoxelCompression/voxel_uncompress/VoxelUncompress.h>
 #include<sv/Utils/common.h>
 #include<atomic>
+#include<data/block_volume_data.h>
 #define DECODER_NUM 5
-struct BlockDesc{
-    std::array<uint32_t,3> block_index;
-    CUdeviceptr data;
-    int64_t size;
-};
+
 struct BlockDataDesc{
 
 };
@@ -41,17 +38,17 @@ public:
             return tf->getPreIntTransferFunc();
     }
 
-    void setupVolumeData(const char* file_path){volume_data;}
-    virtual std::vector<uint8_t>& getVolumeData(){ return volume_data->getData();}
-    virtual std::array<uint32_t,3>& getVolumeDim(){return block_dim;}// {return volume_data->getDim();}
+    void setupVolumeData(const char* file_path){volume_data=BlockVolumeData::load(file_path);}
+    virtual const std::vector<uint8_t>& getVolumeData(){ return volume_data->getData();}
+    virtual const std::array<uint32_t,3>& getVolumeDim(){return block_dim;}// {return volume_data->getDim();}
 public:
     void setupBlockReqInfo() override;
     /**
      * false represent no cached block so consumer should request next time like after 16ms
      * true represent can call getBlock() one more time
-     * every request can call getBlocks() no more than DECODER_NUM ?
+     * every request can call getBlock() no more than DECODER_NUM ?
      */
-    bool getBlock() override;
+    bool getBlock(BlockDesc&) override;
 
 public:
     struct MemoryPool{

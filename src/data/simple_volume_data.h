@@ -13,8 +13,8 @@ public:
 
     uint64_t bufferByteCount();
     static auto load(const char* file_name)->std::shared_ptr<IVolumeData>;
-    auto getData()->std::vector<uint8_t>&{ return buffer; }
-    auto getDim()->std::array<uint32_t,3>&{ return dimensions; }
+    auto getData()->const std::vector<uint8_t>& override{ return buffer; }
+    auto getDim()->const std::array<uint32_t,3>&{ return dimensions; }
 
     std::vector<uint8_t> buffer;
     std::array<uint32_t, 3> dimensions;

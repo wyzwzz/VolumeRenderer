@@ -23,8 +23,8 @@ public:
     }
 
     void setupVolumeData(const char* file_path){ volume_data=SimpleVolumeData::load(file_path);};
-    virtual std::vector<uint8_t>& getVolumeData(){ return volume_data->getData();};
-    virtual std::array<uint32_t,3>& getVolumeDim() {return volume_data->getDim();}
+    virtual const std::vector<uint8_t>& getVolumeData(){ return volume_data->getData();};
+    virtual const std::array<uint32_t,3>& getVolumeDim() {return volume_data->getDim();}
 public:
 
 private:

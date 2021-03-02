@@ -8,6 +8,7 @@
 class IVolumeReader{
 public:
     virtual auto read()->std::unique_ptr<IVolumeData> = 0;
+
 };
 
 #endif //VOLUMERENDERER_VOLUMEREADER_H

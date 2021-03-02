@@ -22,8 +22,7 @@ void BlockVolumeManager::setupBlockReqInfo()
 
 }
 
-bool BlockVolumeManager::getBlock()
-{
+bool BlockVolumeManager::getBlock(BlockDesc &) {
     if(products.empty())
         return false;
     else{
@@ -31,4 +30,6 @@ bool BlockVolumeManager::getBlock()
         return true;
     }
 }
+
+
 

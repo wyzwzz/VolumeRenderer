@@ -15,6 +15,9 @@ void BlockVolumeRenderer::setupVolume(const char *file_path)
 {
     volume_manager->setupVolumeData(file_path);
 
+
+    createVirtualBoxes();
+    createVolumeTexManager();
 }
 
 void BlockVolumeRenderer::setupTransferFunc(std::map<uint8_t, std::array<double, 4>> color_setting)
@@ -28,7 +31,6 @@ void BlockVolumeRenderer::init()
     initCUDA();
     setupController();
 
-    createVirtualBoxes();
 
 }
 
@@ -57,10 +59,11 @@ void BlockVolumeRenderer::render()
         //multi-thread uncompress and copy from device to cuda array
         //if a block is waiting for loading but turn to no need now, stop its task
         //while copying from device to texture, device can't be accessed by other thread or task
-        while(volume_manager->getBlock()) {
+        BlockDesc block;
+        while(volume_manager->getBlock(block)) {
 
 
-            copyDeviceToTexture();
+            copyDeviceToTexture(block.data,block.block_index);
             //4.update current blocks' status: cached and empty; update block map table
             //update every 16ms(fixed time interval)
 
@@ -68,6 +71,7 @@ void BlockVolumeRenderer::render()
 
         //5.render a frame
         //ray stop if sample at an empty block
+        render_frame();
     }
 
 }
@@ -113,17 +117,37 @@ void BlockVolumeRenderer::initCUDA()
 /**
  * index, CUdeviceptr
  */
-void BlockVolumeRenderer::copyDeviceToTexture() {
+void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_t,3> idx) {
 
-    std::array<uint32_t,3> tex_pos_index;
+    std::array<uint32_t,3> tex_pos_index=getTexturePos();
+
+    assert(tex_pos_index[2]<view_depth_level && tex_pos_index[0]<vol_tex_block_nx
+    && tex_pos_index[1]<vol_tex_block_ny);
+
+    CUDA_DRIVER_API_CALL(cuGraphicsMapResources(1, &cu_resources[tex_pos_index[2]], 0));
 
     CUarray cu_array;
+    CUDA_DRIVER_API_CALL(cuGraphicsSubResourceGetMappedArray(&cu_array,cu_resources[tex_pos_index[2]],0,0));
+
+
     CUDA_MEMCPY3D m = { 0 };
     m.srcMemoryType=CU_MEMORYTYPE_DEVICE;
+    m.srcDevice=ptr;
+
 
     m.dstMemoryType=CU_MEMORYTYPE_ARRAY;
     m.dstArray=cu_array;
+    m.dstXInBytes=tex_pos_index[0]*block_length;
+    m.dstY=tex_pos_index[1]*block_length;
+    m.dstZ=0;
 
+    m.WidthInBytes=block_length;
+    m.Height=block_length;
+    m.Depth=block_length;
+
+//    CUDA_DRIVER_API_CALL(cuMemcpy3D(&m));
+
+    CUDA_DRIVER_API_CALL(cuGraphicsUnmapResources(1, &cu_resources[tex_pos_index[2]], 0));
 
 }
 
@@ -152,6 +176,108 @@ void BlockVolumeRenderer::initGL()
 
     glEnable(GL_DEPTH_TEST);
 }
+
+
+
+void BlockVolumeRenderer::updateCurrentBlocks(const sv::OBB &view_box)
+{
+    auto aabb=view_box.getAABB();
+    std::unordered_set<sv::AABB,Myhash> current_intersect_blocks;
+    for(auto& it:virtual_blocks){
+        if(aabb.intersect(it)){
+            current_intersect_blocks.insert(it);
+            print(it);
+        }
+    }
+
+    assert(new_need_blocks.size()==0);
+    assert(no_need_blocks.size()==0);
+    for(auto& it:current_intersect_blocks){
+        if(current_blocks.find(it)==current_blocks.cend()){
+            new_need_blocks.insert(it);
+        }
+    }
+    for(auto& it:current_blocks){
+        if(current_intersect_blocks.find(it)==current_intersect_blocks.cend()){
+            no_need_blocks.insert(it);
+        }
+    }
+    current_blocks=std::move(current_intersect_blocks);
+
+    for(auto& it:volume_tex_manager){
+        auto t=sv::AABB(it.block_index);
+        //not find
+        if(current_blocks.find(t)==current_blocks.cend()){
+            it.valid=false;
+        }
+        else{
+            assert(it.valid==true);
+        }
+    }
+
+
+}
+
+void BlockVolumeRenderer::createVirtualBoxes()
+{
+    for(uint32_t z=0;z<block_dim[2];z++){
+        for(uint32_t y=0;y<block_dim[1];y++){
+            for(uint32_t x=0;x<block_dim[0];x++){
+                virtual_blocks.emplace_back(glm::vec3(x*block_length,y*block_length,z*block_length),
+                                            glm::vec3((x+1)*block_length,(y+1)*block_length,(z+1)*block_length),
+                                            std::array<uint32_t,3>{x,y,z});
+            }
+        }
+    }
+
+}
+
+/**
+ * call after getting volume textures size
+ */
+void BlockVolumeRenderer::createVolumeTexManager() {
+    assert(view_depth_level==volume_texes.size());
+    for(uint32_t i=0;i<vol_tex_block_nx;i++){
+        for(uint32_t j=0;j<vol_tex_block_ny;j++){
+            for(uint32_t k=0;k<view_depth_level;k++){
+                BlockTableItem item;
+                item.pos_index={i,j,k};
+                item.block_index={INVALID,INVALID,INVALID};
+                item.valid=false;
+                item.cached=false;
+                volume_tex_manager.push_back(std::move(item));
+            }
+        }
+    }
+}
+auto BlockVolumeRenderer::getTexturePos() -> std::array<uint32_t, 3> {
+    return std::array<uint32_t, 3>();
+}
+
+void BlockVolumeRenderer::createGLTexture() {
+    assert(block_length && vol_tex_block_nx && vol_tex_block_ny && view_depth_level);
+    assert(volume_texes.size()==0);
+    volume_texes.assign(view_depth_level,0);
+    glCreateTextures(GL_TEXTURE_3D,view_depth_level,volume_texes.data());
+    for(int i=0;i<view_depth_level;i++){
+        glTextureStorage3D(volume_texes[i],1,GL_R8,vol_tex_block_nx*block_length,
+                                                   vol_tex_block_ny*block_length,
+                                                   block_length);
+    }
+
+}
+void BlockVolumeRenderer::createGLSampler() {
+    glCreateSamplers(1,&gl_sampler);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_EDGE);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+}
+
+
+
+
 
 std::function<void(GLFWwindow *window, int width, int height)> framebuffer_resize_callback;
 void glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height){
@@ -228,72 +354,9 @@ void BlockVolumeRenderer::setupController()
     };
 }
 
-void BlockVolumeRenderer::updateCurrentBlocks(const sv::OBB &view_box)
-{
-    auto aabb=view_box.getAABB();
-    std::unordered_set<sv::AABB,Myhash> current_intersect_blocks;
-    for(auto& it:virtual_blocks){
-        if(aabb.intersect(it)){
-            current_intersect_blocks.insert(it);
-        }
-    }
-    assert(new_need_blocks.size()==0);
-    assert(no_need_blocks.size()==0);
-    for(auto& it:current_intersect_blocks){
-        if(current_blocks.find(it)==current_blocks.cend()){
-            new_need_blocks.insert(it);
-        }
-    }
-    for(auto& it:current_blocks){
-        if(current_intersect_blocks.find(it)==current_intersect_blocks.cend()){
-            no_need_blocks.insert(it);
-        }
-    }
-    current_blocks=std::move(current_intersect_blocks);
-
-    for(auto& it:volume_tex_manager){
-        auto t=sv::AABB(it.block_index);
-        //not find
-        if(current_blocks.find(t)==current_blocks.cend()){
-            it.valid=false;
-        }
-        else{
-            assert(it.valid==true);
-        }
-    }
-
+void BlockVolumeRenderer::render_frame() {
 
 }
 
-void BlockVolumeRenderer::createVirtualBoxes()
-{
-    for(uint32_t z=0;z<dim[2];z++){
-        for(uint32_t y=0;y<dim[1];y++){
-            for(uint32_t x=0;x<dim[0];x++){
-                virtual_blocks.emplace_back(glm::vec3(x*block_length,y*block_length,z*block_length),
-                                            glm::vec3((x+1)*block_length,(y+1)*block_length,(z+1)*block_length),
-                                            std::array<uint32_t,3>{x,y,z});
-            }
-        }
-    }
 
-}
 
-/**
- * call after getting volume textures size
- */
-void BlockVolumeRenderer::createVolumeTexManager() {
-    assert(view_depth_level==volume_texes.size());
-    for(uint32_t i=0;i<vol_tex_block_nx;i++){
-        for(uint32_t j=0;j<vol_tex_block_ny;j++){
-            for(uint32_t k=0;k<view_depth_level;k++){
-                BlockTableItem item;
-                item.pos_index={i,j,k};
-                item.block_index={INVALID,INVALID,INVALID};
-                item.valid=false;
-                item.cached=false;
-                volume_tex_manager.push_back(std::move(item));
-            }
-        }
-    }
-}

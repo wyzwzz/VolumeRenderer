@@ -10,6 +10,7 @@ list(
         render/volume_renderer.cpp
         control/Controller.cpp
         data/block_volume_manager.cpp
+        data/block_volume_data.cpp
         ${CMAKE_SOURCE_DIR}/third_party/glad/src/glad.c
 )
 

@@ -47,19 +47,28 @@ private:
     void deleteGLResource();
     void deleteGLTexture();
 
+    void render_frame();
+
     void createVirtualBoxes();
     void createVolumeTexManager();
+    void createCUgraphicsResource();
+    void deleteCUgraphicsResource();
+    void createGLTexture();
+    void bindGLTextureUnit();
+    void createGLSampler();
 private:
-    void copyDeviceToTexture();
+    void copyDeviceToTexture(CUdeviceptr,std::array<uint32_t,3>);
     void updateCurrentBlocks(const sv::OBB& view_box);
+    auto getTexturePos()->std::array<uint32_t,3>;
 private:
     uint32_t block_length;
     uint32_t vol_tex_block_nx,vol_tex_block_ny;
     uint32_t view_depth_level;//equal to volume texture num
-    std::array<uint32_t,3> dim;
+    std::array<uint32_t,3> block_dim;
     std::vector<sv::AABB> virtual_blocks;
 
     std::vector<GLuint> volume_texes;
+    GLuint gl_sampler;
 
     std::list<BlockTableItem> volume_tex_manager;
     std::unordered_set<sv::AABB,Myhash> current_blocks;
