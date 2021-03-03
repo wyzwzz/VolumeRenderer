@@ -13,7 +13,7 @@ public:
     auto getData()->const std::vector<uint8_t>& override;
     auto getDim()->const std::array<uint32_t,3>& override;
     void getPacket(std::array<uint32_t,3>, std::vector<std::vector<uint8_t>>&) override;
-
+    VolumeDataInfo getVolumeDataInfo() override;
 
     std::unique_ptr<sv::Reader> reader;
 };

@@ -15,6 +15,11 @@ public:
     static auto load(const char* file_name)->std::shared_ptr<IVolumeData>;
     auto getData()->const std::vector<uint8_t>& override{ return buffer; }
     auto getDim()->const std::array<uint32_t,3>&{ return dimensions; }
+    VolumeDataInfo getVolumeDataInfo() override{
+        return {
+            Raw,dimensions[0],dimensions[1],dimensions[2]
+        };
+    }
 
     std::vector<uint8_t> buffer;
     std::array<uint32_t, 3> dimensions;

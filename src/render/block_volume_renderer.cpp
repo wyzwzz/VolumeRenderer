@@ -54,7 +54,8 @@ void BlockVolumeRenderer::render()
 
         //2.calculate new pass render needing blocks
         //sort these blocks by distance to viewport
-        volume_manager->setupBlockReqInfo();
+        volume_manager->setupBlockReqInfo(getBlockRequestInfo());
+
         //3.update blocks: uncompress and loading
         //multi-thread uncompress and copy from device to cuda array
         //if a block is waiting for loading but turn to no need now, stop its task
@@ -64,8 +65,11 @@ void BlockVolumeRenderer::render()
 
 
             copyDeviceToTexture(block.data,block.block_index);
+            //stupid method
+//            ((BlockVolumeManager*)(volume_manager))->updateMemoryPool();
             //4.update current blocks' status: cached and empty; update block map table
             //update every 16ms(fixed time interval)
+
 
         }
 
@@ -119,6 +123,7 @@ void BlockVolumeRenderer::initCUDA()
  */
 void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_t,3> idx) {
 
+    //getTexturePos() set valid=false cached=false
     std::array<uint32_t,3> tex_pos_index=getTexturePos();
 
     assert(tex_pos_index[2]<view_depth_level && tex_pos_index[0]<vol_tex_block_nx
@@ -148,6 +153,15 @@ void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_
 //    CUDA_DRIVER_API_CALL(cuMemcpy3D(&m));
 
     CUDA_DRIVER_API_CALL(cuGraphicsUnmapResources(1, &cu_resources[tex_pos_index[2]], 0));
+
+    //update volume_tex_manager
+    for(auto& it:volume_tex_manager){
+        if(it.pos_index==tex_pos_index){
+            it.block_index=idx;
+            it.valid=true;
+            it.cached=true;
+        }
+    }
 
 }
 
@@ -254,6 +268,23 @@ auto BlockVolumeRenderer::getTexturePos() -> std::array<uint32_t, 3> {
     return std::array<uint32_t, 3>();
 }
 
+void BlockVolumeRenderer::createCUgraphicsResource() {
+
+    assert(volume_texes.size()==cu_resources.size() && view_depth_level==volume_texes.size() && view_depth_level!=0);
+
+    for(int i=0;i<volume_texes.size();i++){
+        CUDA_DRIVER_API_CALL(cuGraphicsGLRegisterImage(&cu_resources[i], volume_texes[i],GL_TEXTURE_3D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
+    }
+
+}
+
+void BlockVolumeRenderer::deleteCUgraphicsResource() {
+    assert(volume_texes.size()==cu_resources.size() && view_depth_level==volume_texes.size() && view_depth_level!=0);
+    for(int i=0;i<cu_resources.size();i++){
+        CUDA_DRIVER_API_CALL(cuGraphicsUnregisterResource(cu_resources[i]));
+    }
+}
+
 void BlockVolumeRenderer::createGLTexture() {
     assert(block_length && vol_tex_block_nx && vol_tex_block_ny && view_depth_level);
     assert(volume_texes.size()==0);
@@ -275,8 +306,20 @@ void BlockVolumeRenderer::createGLSampler() {
     glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
 }
 
+BlockRequestInfo BlockVolumeRenderer::getBlockRequestInfo() {
+    BlockRequestInfo request;
+    for(auto& it:new_need_blocks){
+        request.request_blocks_queue.push_back(it.index);
+    }
+    for(auto& it:no_need_blocks){
+        request.noneed_blocks_queue.push_back(it.index);
+    }
+    return request;
+}
 
+void BlockVolumeRenderer::render_frame() {
 
+}
 
 
 std::function<void(GLFWwindow *window, int width, int height)> framebuffer_resize_callback;
@@ -330,7 +373,6 @@ void BlockVolumeRenderer::setupController()
             glfwSetWindowShouldClose(window, true);
         }
 
-
     };
     glfwSetFramebufferSizeCallback(window,glfw_framebuffer_resize_callback);
     glfwSetMouseButtonCallback(window,glfw_mouse_button_callback);
@@ -354,9 +396,6 @@ void BlockVolumeRenderer::setupController()
     };
 }
 
-void BlockVolumeRenderer::render_frame() {
-
-}
 
 
 

@@ -7,13 +7,13 @@
 #include<glad/glad.h>
 #include<GLFW/glfw3.h>
 #include<sv/Render/VolumeRenderer.h>
-#include<data/simple_volume_manager.h>
 #include<sv/Render/Shader.h>
 #include<sv/Control/Controller.h>
 #include<string>
 #include<imgui.h>
 #include<imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
+#include<imgui_impl_opengl3.h>
+
 #define TF_TEXTURE_BINDING 0
 #define PREINT_TF_TEXTURE_BINDING 1
 #define ENTRYPOS_TEXTURE_BINDING 2
@@ -33,14 +33,7 @@
  */
 class SimpleVolumeRenderer: public IVolumeRenderer{
 public:
-    SimpleVolumeRenderer()
-    :window_width(1200),window_height(900)
-    {
-        initGL();
-        volume_manager=std::make_unique<SimpleVolumeManager>();
-        raycastpos_shader=std::make_unique<sv::Shader>(RAYCAST_POS_VERT,RAYCAST_POS_FRAG);
-        raycasting_shader=std::make_unique<sv::Shader>(RAYCASTING_VERT,RAYCASTING_FRAG);
-    }
+    SimpleVolumeRenderer();
     void setupVolume(const char* file_path) override ;
     void setupTransferFunc(std::map<uint8_t,std::array<double,4>> color_setting) override;
     void init() override;

@@ -4,8 +4,8 @@
 
 #ifndef VOLUMERENDERER_CONTROLLER_H
 #define VOLUMERENDERER_CONTROLLER_H
-#include<sv/Control/Camera.h>
 #include<GLFW/glfw3.h>
+#include<sv/Control/Camera.h>
 #include<functional>
 namespace sv{
     using FramebufferSize_Callback=std::function<void(void*,int,int)>;

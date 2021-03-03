@@ -9,17 +9,16 @@
 #include<math.h>
 #include<iostream>
 #include<sv/Utils/boundingbox.h>
-namespace sv{
+namespace sv {
     enum class CameraDefinedKey{
-        MOVE_FASTER,MOVE_SLOWER,
-        ROTATE_FASTER,ROTATE_SLOWER,
-        FAR,NEAR
-    };
+        MOVE_FASTER,MOVE_SLOWER,ROTATE_FASTER,ROTATE_SLOWER,VIEW_FAR,VIEW_NEAR};
+
     enum class CameraMoveDirection{
         FORWARD,BACKWARD,
         LEFT,RIGHT,
         UP,DOWN
     };
+
     class Camera{
 
     public:
@@ -227,9 +226,9 @@ namespace sv{
             move_sense*=2;
         else if(arg==CameraDefinedKey::ROTATE_SLOWER)
             move_sense/=2;
-        else if(arg==CameraDefinedKey::FAR)
+        else if(arg==CameraDefinedKey::VIEW_FAR)
             f*=1.1f;
-        else if(arg==CameraDefinedKey::NEAR)
+        else if(arg==CameraDefinedKey::VIEW_NEAR)
             f*=0.9f;
     }
 

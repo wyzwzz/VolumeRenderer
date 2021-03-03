@@ -1,7 +1,6 @@
 //
 // Created by wyz on 20-12-4.
 //
-
 #ifndef VOLUMERENDER_BLOCK_VOLUME_RENDERER_H
 #define VOLUMERENDER_BLOCK_VOLUME_RENDERER_H
 #include<glad/glad.h>
@@ -9,7 +8,7 @@
 #include<sv/Render/VolumeRenderer.h>
 #include<cuda.h>
 #include<sv/Render/Shader.h>
-#include<sv/Control/Controller.h>
+#include<sv/Control/Camera.h>
 #include<queue>
 #include<list>
 #include<unordered_set>
@@ -19,6 +18,7 @@ struct Myhash{
         return (aabb.index[0]<<16)+(aabb.index[1]<<8)+aabb.index[2];
     }
 };
+struct BlockRequestInfo;
 class BlockVolumeRenderer: public IVolumeRenderer{
 public:
     BlockVolumeRenderer();
@@ -47,7 +47,7 @@ private:
     void deleteGLResource();
     void deleteGLTexture();
 
-    void render_frame();
+
 
     void createVirtualBoxes();
     void createVolumeTexManager();
@@ -60,6 +60,8 @@ private:
     void copyDeviceToTexture(CUdeviceptr,std::array<uint32_t,3>);
     void updateCurrentBlocks(const sv::OBB& view_box);
     auto getTexturePos()->std::array<uint32_t,3>;
+    void render_frame();
+    BlockRequestInfo getBlockRequestInfo();
 private:
     uint32_t block_length;
     uint32_t vol_tex_block_nx,vol_tex_block_ny;

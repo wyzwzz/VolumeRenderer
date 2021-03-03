@@ -7,7 +7,7 @@
 #include <sv/Data/TransferFunc.h>
 #include <sv/Data/VolumeData.h>
 #include <memory>
-#include<utils/help_cuda.h>
+#include <utils/help_cuda.h>
 struct BlockRequestInfo{
     //uncompress and load new blocks
     std::vector<std::array<uint32_t,3>> request_blocks_queue;
@@ -16,6 +16,9 @@ struct BlockRequestInfo{
 };
 
 struct BlockDesc{
+    BlockDesc()=default;
+    BlockDesc(const std::array<uint32_t,3>& idx):block_index(idx),data(0),size(0){}
+
     std::array<uint32_t,3> block_index;
     CUdeviceptr data;
     int64_t size;
@@ -29,8 +32,9 @@ public:
     virtual const std::vector<float>& getTransferFunc(bool preInt=false)=0;
     virtual const std::vector<uint8_t>& getVolumeData()=0;
     virtual const std::array<uint32_t,3>& getVolumeDim()=0;
-    virtual void setupBlockReqInfo(){};
+    virtual void setupBlockReqInfo(const BlockRequestInfo&){};
     virtual bool getBlock(BlockDesc&){return false;};
+    virtual VolumeDataInfo getVolumeDataInfo()=0;
 protected:
     /**
      * Every volume manager have a transfer function

@@ -8,13 +8,12 @@
 #include<array>
 #include<queue>
 #include<thread>
-
 #include<VoxelCompression/voxel_uncompress/VoxelUncompress.h>
 #include<sv/Utils/common.h>
 #include<atomic>
 #include<data/block_volume_data.h>
-#define DECODER_NUM 5
 
+#define DECODER_NUM 5
 struct BlockDataDesc{
 
 };
@@ -24,6 +23,10 @@ struct BlockDataDesc{
 class BlockVolumeManager: public IVolumeManager{
 public:
     BlockVolumeManager();
+    ~BlockVolumeManager(){
+        this->stop=true;
+        this->task.join();
+    }
 public:
     void setupTransferFunc(std::map<uint8_t,std::array<double,4> > color_setting){
         if(!tf.get())
@@ -42,7 +45,7 @@ public:
     virtual const std::vector<uint8_t>& getVolumeData(){ return volume_data->getData();}
     virtual const std::array<uint32_t,3>& getVolumeDim(){return block_dim;}// {return volume_data->getDim();}
 public:
-    void setupBlockReqInfo() override;
+    void setupBlockReqInfo(const BlockRequestInfo&) override;
     /**
      * false represent no cached block so consumer should request next time like after 16ms
      * true represent can call getBlock() one more time
@@ -50,21 +53,44 @@ public:
      */
     bool getBlock(BlockDesc&) override;
 
+    VolumeDataInfo getVolumeDataInfo() override;
+
+public:
+    void updateMemoryPool();
+private:
+    void initArgs();
+    void init();
+    void initCUresource();
+private:
+    void startTask();
 public:
     struct MemoryPool{
+        CUdeviceptr getCUMem(){
+            for(int i=0;i<m_status.size();i++){
+                if(!m_status[i]._a){
+                    m_status[i]._a=true;
+                    return m[i];
+                }
+            }
+        }
         std::vector<CUdeviceptr> m;
-        std::vector<std::atomic<bool>> m_status;
+        std::vector<atomic_wrapper<bool>> m_status;
     } memory_pool;
 private:
+    CUcontext cu_context;
     uint32_t block_length;
     uint32_t padding;
     std::array<uint32_t,3> block_dim;
     VoxelUncompressOptions opts;
     std::vector<std::unique_ptr<VoxelUncompress>> workers;
-    std::atomic<bool> worker_status;
-    std::priority_queue<BlockDesc> packages;
+    std::vector<atomic_wrapper<bool>> worker_status;
+    std::list<BlockDesc> packages;//
+    std::condition_variable cv;
+    std::thread task;
+    bool stop;
     std::mutex mtx;//lock for packages
-    std::vector<std::thread> jobs;//can not terminate, guarantee a job if start must finish
+    //move the BlockDesc into jobs
+    ThreadPool jobs;//can not terminate, guarantee a job if start must finish
                                   //while finish uncompress, will inspect whether add to products
                                   //if the block is still in packages then add, otherwise not
                                   //another inspection is if the products is full

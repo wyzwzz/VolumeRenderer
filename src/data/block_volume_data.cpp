@@ -32,4 +32,22 @@ auto BlockVolumeData::getDim() -> const std::array<uint32_t, 3> & {
     return {x,y,z};
 }
 
+VolumeDataInfo BlockVolumeData::getVolumeDataInfo() {
+    auto header=reader->get_header();
+    uint32_t block_length=std::pow(2,header.log_block_length);
+    return {
+        Block,
+        header.raw_x,
+        header.raw_y,
+        header.raw_z,
+        block_length,
+        header.padding,
+        header.block_dim_x,
+        header.block_dim_y,
+        header.block_dim_z,
+        header.frame_width,
+        header.frame_height
+    };
+}
+
 

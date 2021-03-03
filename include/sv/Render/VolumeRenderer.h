@@ -6,6 +6,7 @@
 #define VOLUMERENDER_VOLUMERENDERER_H
 #include<map>
 #include<sv/Data/VolumeManager.h>
+
 class IVolumeRenderer{
 public:
     virtual void setupVolume(const char* file_path)=0;

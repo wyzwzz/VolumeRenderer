@@ -7,6 +7,7 @@
 #include<sv/Data/VolumeManager.h>
 #include<data/simple_volume_data.h>
 #include<io/RawVolumeReader.h>
+
 class SimpleVolumeManager: public IVolumeManager{
 public:
     void setupTransferFunc(std::map<uint8_t,std::array<double,4> > color_setting){
@@ -25,6 +26,9 @@ public:
     void setupVolumeData(const char* file_path){ volume_data=SimpleVolumeData::load(file_path);};
     virtual const std::vector<uint8_t>& getVolumeData(){ return volume_data->getData();};
     virtual const std::array<uint32_t,3>& getVolumeDim() {return volume_data->getDim();}
+    VolumeDataInfo getVolumeDataInfo() override{
+        return std::forward<VolumeDataInfo>(volume_data->getVolumeDataInfo());
+    };
 public:
 
 private:
