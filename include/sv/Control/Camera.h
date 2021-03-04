@@ -199,6 +199,8 @@ namespace sv {
     inline void RayCastOrthoCamera::processMouseMove(float xoffset, float yoffset) {
         yaw+=xoffset*move_sense;
         pitch+=yoffset*move_sense;
+//        std::cout<<xoffset<<"**"<<yoffset<<std::endl;
+//        std::cout<<yaw<<"**"<<pitch<<std::endl;
         if(pitch>60.0f)
             pitch=60.0f;
         if(pitch<-60.0f)

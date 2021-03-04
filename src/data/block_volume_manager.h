@@ -41,7 +41,12 @@ public:
             return tf->getPreIntTransferFunc();
     }
 
-    void setupVolumeData(const char* file_path){volume_data=BlockVolumeData::load(file_path);}
+    void setupVolumeData(const char* file_path){
+        volume_data=BlockVolumeData::load(file_path);
+        initWorkPipeline();
+        startTask();
+
+    }
     virtual const std::vector<uint8_t>& getVolumeData(){ return volume_data->getData();}
     virtual const std::array<uint32_t,3>& getVolumeDim(){return block_dim;}// {return volume_data->getDim();}
 public:
@@ -56,23 +61,42 @@ public:
     VolumeDataInfo getVolumeDataInfo() override;
 
 public:
-    void updateMemoryPool();
+    void updateMemoryPool(CUdeviceptr);
 private:
     void initArgs();
-    void init();
+    void initWorkPipeline();
     void initCUresource();
+    void initWorkResource();
+
+public:
+    void print_args();
 private:
     void startTask();
 public:
     struct MemoryPool{
         CUdeviceptr getCUMem(){
+            std::unique_lock<std::mutex> lk(mtx);
+            cv.wait(lk,[&](){
+                for(int i=0;i<m_status.size();i++){
+                    //mutex?
+                    if(!m_status[i]._a){
+                        return true;
+                    }
+                }
+                std::cout<<"all allocated cuda memory used!"<<std::endl;
+                return false;
+            });
             for(int i=0;i<m_status.size();i++){
+                //mutex?
+
                 if(!m_status[i]._a){
                     m_status[i]._a=true;
                     return m[i];
                 }
             }
         }
+        std::condition_variable cv;
+        std::mutex mtx;
         std::vector<CUdeviceptr> m;
         std::vector<atomic_wrapper<bool>> m_status;
     } memory_pool;
@@ -84,6 +108,7 @@ private:
     VoxelUncompressOptions opts;
     std::vector<std::unique_ptr<VoxelUncompress>> workers;
     std::vector<atomic_wrapper<bool>> worker_status;
+    std::condition_variable worker_cv;
     std::list<BlockDesc> packages;//
     std::condition_variable cv;
     std::thread task;

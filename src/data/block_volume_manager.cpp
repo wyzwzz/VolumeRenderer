@@ -5,7 +5,7 @@
 #include<assert.h>
 #define WORKER_NUM 5
 BlockVolumeManager::BlockVolumeManager()
-:jobs(WORKER_NUM)
+:jobs(WORKER_NUM),stop(false)
 {
 
 }
@@ -25,96 +25,87 @@ void BlockVolumeManager::setupBlockReqInfo(const BlockRequestInfo& request)
         }
     }
     packages.insert(packages.cend(),request.request_blocks_queue.cbegin(),request.request_blocks_queue.cend());
+//    std::cout<<"packages size: "<<packages.size()<<std::endl;
 
     mtx.unlock();
-
+    cv.notify_one();
     //find workers not busy and empty memory buffer from memory pool
     //for every worker
     //jobs=create_job(packages.pop(),worker)
 
-//    assert(workers.size()==worker_status.size());
-//    for(int i=0;i<worker_status.size();i++){
-//        if(!worker_status[i]._a){
-//            worker_status[i]._a=true;
-//            std::unique_lock<std::mutex> lk(mtx);
-//            cv.wait(lk,[&](){
-//                if(packages.empty())
-//                    return false;
-//                else
-//                    return true;
-//            });
-//            auto package=packages.front();
-//            packages.pop_front();
-//
-//
-//            jobs.AppendTask([&](int index,BlockDesc block_desc){
-//                std::vector<std::vector<uint8_t>> packet;
-//                volume_data->getPacket(block_desc.block_index,packet);
-//                uint64_t block_byte_size=(uint64_t)block_length*block_length*block_length;
-//                CUdeviceptr cu_ptr=memory_pool.getCUMem();
-//                workers[i]->uncompress((uint8_t*)cu_ptr,block_byte_size,packet);
-//                block_desc.data=cu_ptr;
-//                block_desc.size=block_byte_size;
-//                products.push_back(block_desc);
-//                worker_status[i]._a=true;
-//            },i,std::move(package));
-//        }
-//    }
 
 }
 void BlockVolumeManager::startTask() {
-
+    std::cout<<__FUNCTION__<<std::endl;
     this->task=std::thread([&]()->void{
         while(true){
+            if(this->stop){
+                return;
+            }
+//            std::cout<<"packages size: "<<packages.size()<<std::endl;
+            assert(workers.size()==worker_status.size());
+            std::cout<<"workers size: "<<workers.size()<<std::endl;
+
+            //first find workable worker
+
+            //wait for workers
             {
                 std::unique_lock<std::mutex> lk(mtx);
-                cv.wait(lk,[&](){
-                   if(!packages.empty())
-                       return true;
-                   else
-                       return false;
+                worker_cv.wait(lk, [&]() {
+                    if(worker_status.empty())
+                        return false;
+                    for (auto &worker_statu : worker_status) {
+                        if (!worker_statu._a) {
+                            return true;
+                        }
+                    }
+                    std::cout<<"all busy"<<std::endl;
+                    return false;
                 });
-                if(this->stop){
-                    return;
-                }
+            }
 
-                assert(workers.size()==worker_status.size());
-                for(int i=0;i<worker_status.size();i++){
-                    if(!worker_status[i]._a){
-                        worker_status[i]._a=true;
+            for(int i=0;i<worker_status.size();i++){
+                if(!worker_status[i]._a){
+                    worker_status[i]._a=true;
+                    BlockDesc package;
+                    {
+                        //wait for packages
                         std::unique_lock<std::mutex> lk(mtx);
-                        cv.wait(lk,[&](){
-                            if(packages.empty())
+                        cv.wait(lk, [&]() {
+                            if (packages.empty())
                                 return false;
                             else
                                 return true;
                         });
-                        auto package=packages.front();
+                        package = packages.front();
                         packages.pop_front();
-
-
-                        jobs.AppendTask([&](int index,BlockDesc block_desc){
-                            std::vector<std::vector<uint8_t>> packet;
-                            volume_data->getPacket(block_desc.block_index,packet);
-                            uint64_t block_byte_size=(uint64_t)block_length*block_length*block_length;
-                            CUdeviceptr cu_ptr=memory_pool.getCUMem();
-                            workers[i]->uncompress((uint8_t*)cu_ptr,block_byte_size,packet);
-                            block_desc.data=cu_ptr;
-                            block_desc.size=block_byte_size;
-                            products.push_back(block_desc);
-                            worker_status[i]._a=true;
-                        },i,std::move(package));
                     }
+                    std::cout<<"start job"<<std::endl;
+                    jobs.AppendTask([&](int index,BlockDesc block_desc){
+                        std::vector<std::vector<uint8_t>> packet;
+                        volume_data->getPacket(block_desc.block_index,packet);
+                        uint64_t block_byte_size=(uint64_t)block_length*block_length*block_length;
+                        CUdeviceptr cu_ptr=memory_pool.getCUMem();//atomic read???
+                        workers[index]->uncompress((uint8_t*)cu_ptr,block_byte_size,packet);
+                        block_desc.data=cu_ptr;
+                        block_desc.size=block_byte_size;
+                        products.push_back(block_desc);//wait while full is implied in push_back()
+                        worker_status[index]._a=false;
+                        worker_cv.notify_one();
+                    },i,std::move(package));
                 }
-
             }
-        }
+
+        }//end while
     });
 }
 
-bool BlockVolumeManager::getBlock(BlockDesc & block) {
-    if(products.empty())
+bool BlockVolumeManager::getBlock(BlockDesc & block)
+{
+    if(products.empty()){
+
         return false;
+    }
     else{
         block=products.pop_front();
 
@@ -122,13 +113,30 @@ bool BlockVolumeManager::getBlock(BlockDesc & block) {
     }
 }
 
-
+void BlockVolumeManager::updateMemoryPool(CUdeviceptr ptr)
+{
+    assert(memory_pool.m.size()==memory_pool.m_status.size());
+    for(size_t i=0;i<memory_pool.m.size();i++){
+        if(memory_pool.m[i]==ptr){
+            memory_pool.m_status[i]._a=false;
+            return;
+        }
+    }
+    throw std::runtime_error("ptr not found in memory_pool");
+}
 
 
 VolumeDataInfo BlockVolumeManager::getVolumeDataInfo() {
     return std::forward<VolumeDataInfo>(volume_data->getVolumeDataInfo());
 }
 
+void BlockVolumeManager::initWorkPipeline() {
+
+    initArgs();
+    initWorkResource();
+    initCUresource();
+    print_args();
+}
 void BlockVolumeManager::initArgs() {
     assert(volume_data);
     auto volume_data_info=volume_data->getVolumeDataInfo();
@@ -140,7 +148,7 @@ void BlockVolumeManager::initArgs() {
     this->opts.use_device_frame_buffer=true;
 }
 
-void BlockVolumeManager::init() {
+void BlockVolumeManager::initWorkResource() {
     for(int i=0;i<WORKER_NUM;i++){
         std::unique_ptr<VoxelUncompress> worker(new VoxelUncompress(opts));
         workers.emplace_back(std::move(worker));
@@ -148,7 +156,6 @@ void BlockVolumeManager::init() {
     }
     products.setSize(WORKER_NUM*2);
     assert(packages.size()==0);
-
 }
 
 void BlockVolumeManager::initCUresource() {
@@ -164,6 +171,18 @@ void BlockVolumeManager::initCUresource() {
     for(int i=0;i<memory_pool.m.size();i++){
         CUDA_DRIVER_API_CALL(cuMemAlloc(&memory_pool.m[i],block_byte_size));
     }
+}
+
+void BlockVolumeManager::print_args() {
+    std::cout<<"[BlockVolumeManager args]:"
+    <<"\n\tblock_length: "<<this->block_length
+    <<"\n\tpadding: "<<this->padding
+    <<"\n\tblock_dim: ("<<block_dim[0]<<" "<<block_dim[1]<<" "<<block_dim[2]<<")"
+    <<"\n\tframe_width&&frame_height: "<<this->opts.width<<" "<<this->opts.height
+    <<"\n\tworkers size: "<<workers.size()
+    <<"\n\tworker_status size: "<<worker_status.size()
+    <<"\n\tmemory_pool.m size: "<<memory_pool.m.size()
+    <<"\n\tmemory_pool.m_status size: "<<memory_pool.m_status.size()<<std::endl;
 }
 
 

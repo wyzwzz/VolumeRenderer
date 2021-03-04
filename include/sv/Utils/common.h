@@ -15,6 +15,7 @@
 #include <atomic>
 #include <queue>
 #include <type_traits>
+#include <array>
 #define START_CPU_TIMER \
 {auto _start=std::chrono::steady_clock::now();
 
@@ -67,6 +68,17 @@ inline void print(T t,Args... args)
     std::cout<<t<<" ";
     print(args...);
 }
+
+template<class T,size_t N>
+void print_array(const std::array<T,N>& arr)
+{
+    std::cout<<"( ";
+    for(size_t i=0;i<N;i++){
+        std::cout<<arr[i]<<" ";
+    }
+    std::cout<<")"<<std::endl;
+}
+
 
 template<typename T>
 class ConcurrentQueue

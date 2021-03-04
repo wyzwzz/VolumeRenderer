@@ -39,15 +39,13 @@ public:
 private:
     void initGL();
     void initCUDA();
-    void getGPUInfo();
     void setupScreenQuad();
     void setupShaderUniform();
-    void setupVolumeTexture();
 
     void deleteGLResource();
     void deleteGLTexture();
 
-
+    void setupVolumeDataInfo();
 
     void createVirtualBoxes();
     void createVolumeTexManager();
@@ -56,12 +54,17 @@ private:
     void createGLTexture();
     void bindGLTextureUnit();
     void createGLSampler();
+
+    void setupGPUMemory();
 private:
     void copyDeviceToTexture(CUdeviceptr,std::array<uint32_t,3>);
     void updateCurrentBlocks(const sv::OBB& view_box);
-    auto getTexturePos()->std::array<uint32_t,3>;
+    bool getTexturePos(const std::array<uint32_t,3>&,std::array<uint32_t,3>&);
     void render_frame();
     BlockRequestInfo getBlockRequestInfo();
+
+public:
+    void print_args();
 private:
     uint32_t block_length;
     uint32_t vol_tex_block_nx,vol_tex_block_ny;
@@ -72,6 +75,7 @@ private:
     std::vector<GLuint> volume_texes;
     GLuint gl_sampler;
 
+    std::vector<uint32_t> mapping_table;
     std::list<BlockTableItem> volume_tex_manager;
     std::unordered_set<sv::AABB,Myhash> current_blocks;
     std::unordered_set<sv::AABB,Myhash> new_need_blocks,no_need_blocks;
