@@ -44,7 +44,7 @@ void BlockVolumeManager::startTask() {
             }
 //            std::cout<<"packages size: "<<packages.size()<<std::endl;
             assert(workers.size()==worker_status.size());
-            std::cout<<"workers size: "<<workers.size()<<std::endl;
+//            std::cout<<"workers size: "<<workers.size()<<std::endl;
 
             //first find workable worker
 
@@ -56,6 +56,7 @@ void BlockVolumeManager::startTask() {
                         return false;
                     for (auto &worker_statu : worker_status) {
                         if (!worker_statu._a) {
+                            std::cout<<"find worker"<<std::endl;
                             return true;
                         }
                     }
@@ -72,16 +73,19 @@ void BlockVolumeManager::startTask() {
                         //wait for packages
                         std::unique_lock<std::mutex> lk(mtx);
                         cv.wait(lk, [&]() {
-                            if (packages.empty())
+                            if (packages.empty()){
+//                                std::cout<<"packages empty"<<std::endl;
                                 return false;
+                            }
                             else
                                 return true;
                         });
                         package = packages.front();
                         packages.pop_front();
                     }
-                    std::cout<<"start job"<<std::endl;
+
                     jobs.AppendTask([&](int index,BlockDesc block_desc){
+                        std::cout<<"start job"<<std::endl;
                         std::vector<std::vector<uint8_t>> packet;
                         volume_data->getPacket(block_desc.block_index,packet);
                         uint64_t block_byte_size=(uint64_t)block_length*block_length*block_length;

@@ -123,7 +123,8 @@ namespace sv {
     public:
         RayCastCamera()=default;
         virtual void updateCameraVectors()=0;
-    protected:
+
+    public:
         glm::vec3 view_pos;
         glm::vec3 view_direction;//keep unit
         glm::vec3 up,right;//keep unit
@@ -177,7 +178,8 @@ namespace sv {
         void processMouseScroll(float yoffset);
         void processKeyForArg(CameraDefinedKey arg);
         void updateCameraVectors() override;
-    private:
+
+    public:
         float space_x,space_y;//x-direction and y-direction gap distance between two rays
         uint32_t half_x_n, half_y_n;
 

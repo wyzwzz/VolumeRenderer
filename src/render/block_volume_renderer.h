@@ -13,6 +13,8 @@
 #include<list>
 #include<unordered_set>
 #include<sv/Utils/boundingbox.h>
+#define Block_Raycasting_Shader_V "C:/Users/wyz/projects/VolumeRenderer/src/render/shader/block_raycast_v.glsl"
+#define Block_Raycasting_Shader_F "C:/Users/wyz/projects/VolumeRenderer/src/render/shader/block_raycast_f.glsl"
 struct Myhash{
     std::size_t operator()(const sv::AABB& aabb) const {
         return (aabb.index[0]<<16)+(aabb.index[1]<<8)+aabb.index[2];
@@ -39,8 +41,8 @@ public:
 private:
     void initGL();
     void initCUDA();
-    void setupScreenQuad();
-    void setupShaderUniform();
+
+
 
     void deleteGLResource();
     void deleteGLTexture();
@@ -48,14 +50,21 @@ private:
     void setupVolumeDataInfo();
 
     void createVirtualBoxes();
+    void createMappingTable();
     void createVolumeTexManager();
     void createCUgraphicsResource();
     void deleteCUgraphicsResource();
+    void createGLResource();
+    void createScreenQuad();
     void createGLTexture();
     void bindGLTextureUnit();
     void createGLSampler();
 
+    void updateMappingTable();
     void setupGPUMemory();
+    void setupShaderUniform();
+    void updateCameraUniform();
+
 private:
     void copyDeviceToTexture(CUdeviceptr,std::array<uint32_t,3>);
     void updateCurrentBlocks(const sv::OBB& view_box);
@@ -68,13 +77,14 @@ public:
 private:
     uint32_t block_length;
     uint32_t vol_tex_block_nx,vol_tex_block_ny;
-    uint32_t view_depth_level;//equal to volume texture num
+    uint32_t vol_tex_num;//equal to volume texture num
     std::array<uint32_t,3> block_dim;
     std::vector<sv::AABB> virtual_blocks;
 
     std::vector<GLuint> volume_texes;
     GLuint gl_sampler;
 
+    GLuint mapping_table_ssbo;
     std::vector<uint32_t> mapping_table;
     std::list<BlockTableItem> volume_tex_manager;
     std::unordered_set<sv::AABB,Myhash> current_blocks;

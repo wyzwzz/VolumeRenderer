@@ -21,6 +21,7 @@ void SimpleVolumeRenderer::setupVolume(const char *file_path)
     glTexParameteri(GL_TEXTURE_3D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_EDGE);
     auto dim=volume_manager->getVolumeDim();
+    std::cout<<"dim: "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
     glTexImage3D(GL_TEXTURE_3D,0,GL_RED,dim[0],dim[1],dim[2],0,GL_RED,GL_UNSIGNED_BYTE,volume_manager->getVolumeData().data());
     std::cout<<volume_manager->getVolumeData().size()<<std::endl;
     GL_CHECK
@@ -73,6 +74,7 @@ void SimpleVolumeRenderer::setupShaderUniform()
     raycasting_shader->setInt("preInt_transferfunc",PREINT_TF_TEXTURE_BINDING);
     raycasting_shader->setInt("volume_data",VOLUMEDATA_TEXTURE_BINDING);
 
+
     raycasting_shader->setFloat("ka",0.5f);
     raycasting_shader->setFloat("kd",0.8f);
     raycasting_shader->setFloat("shininess",100.0f);
@@ -114,7 +116,7 @@ void SimpleVolumeRenderer::render()
         glDrawElements(GL_TRIANGLES,36,GL_UNSIGNED_INT,0);
 
         glEnable(GL_CULL_FACE);
-        glFrontFace(GL_CCW);//逆时针
+        glFrontFace(GL_CCW);
         glDrawBuffer(GL_COLOR_ATTACHMENT1);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         glDrawElements(GL_TRIANGLES,36,GL_UNSIGNED_INT,0);
@@ -228,7 +230,7 @@ void SimpleVolumeRenderer::setupRaycastPosFramebuffer()
     glTextureStorage2D(entrypos_tex,1,GL_RGBA32F,window_width,window_height);
     glBindImageTexture(ENTRYPOS_IMAGE_BINDING,entrypos_tex,0,GL_FALSE,0,GL_READ_ONLY,GL_RGBA32F);
     glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,entrypos_tex,0);
-
+    GL_CHECK;
     glGenRenderbuffers(1,&raycastpos_rbo);
     glBindRenderbuffer(GL_RENDERBUFFER,raycastpos_rbo);
     glRenderbufferStorage(GL_RENDERBUFFER,GL_DEPTH24_STENCIL8,window_width,window_height);
@@ -240,7 +242,7 @@ void SimpleVolumeRenderer::setupRaycastPosFramebuffer()
     glTextureStorage2D(exitpos_tex,1,GL_RGBA32F,window_width,window_height);
     glBindImageTexture(EXITPOS_IMAGE_BINDING,exitpos_tex,0,GL_FALSE,0,GL_READ_ONLY,GL_RGBA32F);
     glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT1,GL_TEXTURE_2D,exitpos_tex,0);
-
+    GL_CHECK
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE){
         throw std::runtime_error("Framebuffer object is not complete!");
     }
