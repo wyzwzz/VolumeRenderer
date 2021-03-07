@@ -68,6 +68,7 @@ private:
 private:
     void copyDeviceToTexture(CUdeviceptr,std::array<uint32_t,3>);
     void updateCurrentBlocks(const sv::OBB& view_box);
+    void updateNewNeedBlocksInCache();
     bool getTexturePos(const std::array<uint32_t,3>&,std::array<uint32_t,3>&);
     void render_frame();
     BlockRequestInfo getBlockRequestInfo();
@@ -75,7 +76,7 @@ private:
 public:
     void print_args();
 private:
-    uint32_t block_length;
+    uint32_t block_length,padding;
     uint32_t vol_tex_block_nx,vol_tex_block_ny;
     uint32_t vol_tex_num;//equal to volume texture num
     std::array<uint32_t,3> block_dim;

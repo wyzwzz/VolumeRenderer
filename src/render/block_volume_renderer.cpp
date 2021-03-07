@@ -6,6 +6,12 @@
 #include<data/block_volume_manager.h>
 #include<cudaGL.h>
 
+#define B_TF_TEX_BINDING 0
+#define B_PTF_TEX_BINDING 1
+#define B_VOL_TEX_0_BINDING 2
+#define B_VOL_TEX_1_BINDING 3
+#define B_VOL_TEX_2_BINDING 4
+
 BlockVolumeRenderer::BlockVolumeRenderer()
 : window_width(1200), window_height(900),
   block_length(0), vol_tex_block_nx(0), vol_tex_block_ny(0),
@@ -15,7 +21,7 @@ BlockVolumeRenderer::BlockVolumeRenderer()
     initGL();
     initCUDA();
     volume_manager=std::make_unique<BlockVolumeManager>();
-    camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(1.f,1.f,1.f),window_width/2,window_height/2);
+    camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(128.f,128.f,256.f),window_width/2,window_height/2);
 
 }
 void BlockVolumeRenderer::setupVolume(const char *file_path)
@@ -63,28 +69,54 @@ void BlockVolumeRenderer::init()
     createMappingTable();
 
     setupShaderUniform();
+    bindGLTextureUnit();
 }
 
 void BlockVolumeRenderer::bindGLTextureUnit()
 {
-
+    GL_EXPR(glBindTextureUnit(B_TF_TEX_BINDING,transfer_func_tex));
+    GL_EXPR(glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex));
+    GL_EXPR(glBindTextureUnit(B_VOL_TEX_0_BINDING,volume_texes[0]));
+    GL_EXPR(glBindTextureUnit(B_VOL_TEX_1_BINDING,volume_texes[1]));
+    GL_EXPR(glBindTextureUnit(B_VOL_TEX_2_BINDING,volume_texes[2]));
+    glBindSampler(volume_texes[0],gl_sampler);
+    glBindSampler(volume_texes[1],gl_sampler);
+    glBindSampler(volume_texes[2],gl_sampler);
 }
 
 void BlockVolumeRenderer::setupShaderUniform()
 {
     raycasting_shader->use();
 
+    raycasting_shader->setInt("transfer_func",B_TF_TEX_BINDING);
+    raycasting_shader->setInt("preInt_transfer_func",B_PTF_TEX_BINDING);
+    raycasting_shader->setInt("cache_volume0",B_VOL_TEX_0_BINDING);
+    raycasting_shader->setInt("cache_volume1",B_VOL_TEX_1_BINDING);
+    raycasting_shader->setInt("cache_volume2",B_VOL_TEX_2_BINDING);
+
     raycasting_shader->setInt("window_width",window_width);
     raycasting_shader->setInt("window_height",window_height);
     raycasting_shader->setVec3("view_pos",camera->view_pos);
     raycasting_shader->setVec3("view_direction",camera->view_direction);
+    raycasting_shader->setFloat("view_depth",camera->f);
     raycasting_shader->setVec3("view_right",camera->right);
     raycasting_shader->setVec3("view_up",camera->up);
     raycasting_shader->setFloat("view_right_space",camera->space_x);
     raycasting_shader->setFloat("view_up_space",camera->space_y);
-    raycasting_shader->setFloat("view_right_space",0.01f);
-    raycasting_shader->setFloat("view_up_space",0.01f);
-    raycasting_shader->setFloat("step",1.f);
+    raycasting_shader->setFloat("step",0.3f);
+    raycasting_shader->setVec4("bg_color",0.f,0.f,0.f,0.f);
+    raycasting_shader->setInt("block_length",block_length);
+    raycasting_shader->setInt("padding",padding);
+    raycasting_shader->setIVec3("block_dim",block_dim[0],block_dim[1],block_dim[2]);
+    raycasting_shader->setIVec3("texture_size3",vol_tex_block_nx*block_length,
+                                vol_tex_block_ny*block_length,block_length);
+    raycasting_shader->setFloat("ka",0.5f);
+    raycasting_shader->setFloat("kd",0.8f);
+    raycasting_shader->setFloat("shininess",100.0f);
+    raycasting_shader->setFloat("ks",1.0f);
+    raycasting_shader->setVec3("light_direction",glm::normalize(glm::vec3(-1.0f,-1.0f,-1.0f)));
+
+
 }
 
 std::function<void(GLFWwindow*,float)> process_input;
@@ -110,6 +142,9 @@ void BlockVolumeRenderer::render()
 
         //2.calculate new pass render needing blocks
         //sort these blocks by distance to viewport
+        //find if new_need_blocks cached in the tex_manager
+        updateNewNeedBlocksInCache();
+
         volume_manager->setupBlockReqInfo(getBlockRequestInfo());
 
         //3.update blocks: uncompress and loading
@@ -135,6 +170,7 @@ void BlockVolumeRenderer::render()
         //5.render a frame
         //ray stop if sample at an empty block
         updateCameraUniform();
+
         render_frame();
 
         //6.final
@@ -149,11 +185,15 @@ void BlockVolumeRenderer::updateCameraUniform()
     raycasting_shader->setVec3("view_direction",camera->view_direction);
     raycasting_shader->setVec3("view_right",camera->right);
     raycasting_shader->setVec3("view_up",camera->up);
+    raycasting_shader->setFloat("view_right_space",camera->space_x);
+    raycasting_shader->setFloat("view_up_space",camera->space_y);
+
 }
 
 void BlockVolumeRenderer::render_frame()
 {
     raycasting_shader->use();
+
     glBindVertexArray(screen_quad_vao);
 
     glDrawArrays(GL_TRIANGLES,0,6);
@@ -249,7 +289,7 @@ void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_
 }
 void BlockVolumeRenderer::updateMappingTable() {
 
-    glNamedBufferSubData(mapping_table_ssbo,0,mapping_table.size(),mapping_table.data());
+    glNamedBufferSubData(mapping_table_ssbo,0,mapping_table.size()*sizeof(uint32_t),mapping_table.data());
 
 }
 void BlockVolumeRenderer::initGL()
@@ -360,7 +400,26 @@ void BlockVolumeRenderer::updateCurrentBlocks(const sv::OBB &view_box)
 
 
 }
+void BlockVolumeRenderer::updateNewNeedBlocksInCache()
+{
+    for(auto& it:volume_tex_manager){
+        //find cached but invalid block in texture
+        if(it.cached && !it.valid){
+            auto t=sv::AABB(it.block_index);
+            if(new_need_blocks.find(t)!=new_need_blocks.cend()){//find!
+                it.valid=true;
 
+                uint32_t flat_idx=it.block_index[2]*block_dim[0]*block_dim[1]+it.block_index[1]*block_dim[0]+it.block_index[0];
+                mapping_table[flat_idx*4+0]=it.pos_index[0];
+                mapping_table[flat_idx*4+1]=it.pos_index[1];
+                mapping_table[flat_idx*4+2]=it.pos_index[2];
+                mapping_table[flat_idx*4+3]=1;
+
+                new_need_blocks.erase(t);
+            }
+        }
+    }
+}
 void BlockVolumeRenderer::createVirtualBoxes()
 {
     std::cout<<__FUNCTION__<<std::endl;
@@ -376,10 +435,12 @@ void BlockVolumeRenderer::createVirtualBoxes()
 
 }
 void BlockVolumeRenderer::createMappingTable() {
+    std::cout<<__FUNCTION__<<std::endl;
     mapping_table.assign(block_dim[0]*block_dim[1]*block_dim[2]*4,0);
     glGenBuffers(1,&mapping_table_ssbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER,mapping_table_ssbo);
-    glBufferData(GL_SHADER_STORAGE_BUFFER,mapping_table.size(),mapping_table.data(),GL_DYNAMIC_READ);
+    std::cout<<"mapping table size: "<<mapping_table.size()<<std::endl;
+    glBufferData(GL_SHADER_STORAGE_BUFFER,mapping_table.size()*sizeof(uint32_t),mapping_table.data(),GL_DYNAMIC_READ);
     //binding point = 0
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,mapping_table_ssbo);
 }
@@ -465,9 +526,10 @@ void BlockVolumeRenderer::createGLSampler() {
     glCreateSamplers(1,&gl_sampler);
     glSamplerParameterf(gl_sampler,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     glSamplerParameterf(gl_sampler,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_EDGE);
-    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
-    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+    float color[4]={0.f,0.f,0.f,0.f};
+    glSamplerParameterfv(gl_sampler,GL_CLAMP_TO_BORDER,color);
+//    glSamplerParameterfv(gl_sampler,GL_CLAMP_TO_BORDER,color);
+//    glSamplerParameterfv(gl_sampler,GL_CLAMP_TO_BORDER,color);
 }
 
 BlockRequestInfo BlockVolumeRenderer::getBlockRequestInfo() {
@@ -488,6 +550,7 @@ BlockRequestInfo BlockVolumeRenderer::getBlockRequestInfo() {
 void BlockVolumeRenderer::setupVolumeDataInfo() {
     auto volume_data_info=volume_manager->getVolumeDataInfo();
     this->block_length=volume_data_info.block_length;
+    this->padding=volume_data_info.padding;
     this->block_dim={volume_data_info.block_dim_x,volume_data_info.block_dim_y,volume_data_info.block_dim_z};
 
 }
@@ -611,6 +674,8 @@ void BlockVolumeRenderer::setupController()
             camera->processMovementByKey(sv::CameraMoveDirection::DOWN, delta_time);
     };
 }
+
+
 
 
 

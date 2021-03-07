@@ -29,6 +29,7 @@ namespace sv{
         void setVec3(const std::string& name,const glm::vec3& value) const;
         void setVec3(const std::string& name,float x,float y,float z) const;
         void setIVec3(const std::string& name,const glm::ivec3& value) const;
+        void setIVec3(const std::string& name,int x,int y,int z) const;
         void setVec4(const std::string& name,const glm::vec4& value) const;
         void setVec4(const std::string& name,float x,float y,float z,float w) const;
         void setMat2(const std::string& name,const glm::mat2& mat) const;
@@ -154,6 +155,9 @@ namespace sv{
     {
         glUniform3f(glGetUniformLocation(ID,name.c_str()),x,y,z);
     }
+    inline void Shader::setIVec3(const std::string &name, int x, int y, int z) const {
+        glUniform3i(glGetUniformLocation(ID,name.c_str()),x,y,z);
+    }
 
     inline void Shader::setIVec3(const std::string &name,const glm::ivec3& value) const
     {
@@ -204,6 +208,7 @@ namespace sv{
             }
         }
     }
+
 
 }
 

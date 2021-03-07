@@ -123,6 +123,7 @@ void BlockVolumeManager::updateMemoryPool(CUdeviceptr ptr)
     for(size_t i=0;i<memory_pool.m.size();i++){
         if(memory_pool.m[i]==ptr){
             memory_pool.m_status[i]._a=false;
+            memory_pool.cv.notify_one();
             return;
         }
     }

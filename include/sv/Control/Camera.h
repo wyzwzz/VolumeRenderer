@@ -147,9 +147,9 @@ namespace sv {
             this->world_up=glm::vec3(0.f,1.f,0.f);
             this->yaw=-90.f;
             this->pitch=0.f;
-            this->move_speed=0.03f;
+            this->move_speed=1.f;
             this->move_sense=0.05f;
-            this->space_x=this->space_y=1.f;
+            this->space_x=this->space_y=this->space_z=1.f;
 
             this->n=0.f;//assert!!!
             this->f=256.f;
@@ -180,7 +180,7 @@ namespace sv {
         void updateCameraVectors() override;
 
     public:
-        float space_x,space_y;//x-direction and y-direction gap distance between two rays
+        float space_x,space_y,space_z;//x-direction and y-direction gap distance between two rays
         uint32_t half_x_n, half_y_n;
 
 
@@ -212,13 +212,26 @@ namespace sv {
 
     inline void RayCastOrthoCamera::processMouseScroll(float yoffset) {
         if(yoffset>0){
-            space_x*=1.05;
-            space_y*=1.05;
+            space_x+=0.1f;
+            space_y+=0.1f;
+            space_z+=0.1f;
+            if(space_x>2.f){
+                space_x=2.f;
+                space_y=2.f;
+                space_z=2.f;
+            }
         }
         else{
-            space_x*=0.95;
-            space_y*=0.95;
+            space_x-=0.1f;
+            space_y-=0.1f;
+            space_z-=0.1f;
+            if(space_x<0.2f){
+                space_x=0.2f;
+                space_y=0.2f;
+                space_z=0.2f;
+            }
         }
+        std::cout<<"space: "<<space_x<<std::endl;
     }
 
     inline void RayCastOrthoCamera::processKeyForArg(CameraDefinedKey arg) {
