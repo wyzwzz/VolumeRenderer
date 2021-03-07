@@ -41,6 +41,7 @@ public:
     void setupController() override;
 public:
     void initGL();
+    void initIMGUI();
     void setupProxyCube(GLfloat x,GLfloat y,GLfloat z);
     void setupScreenQuad();
     void setupRaycastPosFramebuffer();

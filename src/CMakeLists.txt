@@ -12,6 +12,7 @@ list(
         data/block_volume_manager.cpp
         data/block_volume_data.cpp
         ${CMAKE_SOURCE_DIR}/third_party/glad/src/glad.c
+
 )
 
 add_library(sv_core STATIC ${VOLUME_RENDERER_SRC})

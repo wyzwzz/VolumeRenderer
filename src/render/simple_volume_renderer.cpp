@@ -4,6 +4,7 @@
 SimpleVolumeRenderer::SimpleVolumeRenderer():window_width(1200),window_height(900)
 {
     initGL();
+    initIMGUI();
     volume_manager=std::make_unique<SimpleVolumeManager>();
     raycastpos_shader=std::make_unique<sv::Shader>(RAYCAST_POS_VERT,RAYCAST_POS_FRAG);
     raycasting_shader=std::make_unique<sv::Shader>(RAYCASTING_VERT,RAYCASTING_FRAG);
@@ -21,9 +22,9 @@ void SimpleVolumeRenderer::setupVolume(const char *file_path)
     glTexParameteri(GL_TEXTURE_3D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_EDGE);
     auto dim=volume_manager->getVolumeDim();
-    std::cout<<"dim: "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
+//    std::cout<<"dim: "<<dim[0]<<" "<<dim[1]<<" "<<dim[2]<<std::endl;
     glTexImage3D(GL_TEXTURE_3D,0,GL_RED,dim[0],dim[1],dim[2],0,GL_RED,GL_UNSIGNED_BYTE,volume_manager->getVolumeData().data());
-    std::cout<<volume_manager->getVolumeData().size()<<std::endl;
+//    std::cout<<volume_manager->getVolumeData().size()<<std::endl;
     GL_CHECK
 }
 
@@ -130,6 +131,32 @@ void SimpleVolumeRenderer::render()
 
         GL_CHECK
 
+        //imgui
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        static float f;
+
+        {
+            //开始绘制ImGui
+
+            ImGui::Begin("Simple Volume Renderer");
+            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
+            ImGui::Indent(); //另起一行制表符开始绘制Button
+            ImGui::Text("fps: %.1f",ImGui::GetIO().Framerate);
+//            ImGui::SameLine();
+            ImGui::Indent(); //另起一行制表符开始绘制Button
+//            ImGui::Button("button", ImVec2(100, 50));
+
+            ImGui::ShowDemoWindow();
+            ImGui::End();
+        }
+        ImGui::EndFrame();
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+
+        glfwMakeContextCurrent(window);
         glfwSwapBuffers(window);
     }
     glfwTerminate();
@@ -152,8 +179,8 @@ void SimpleVolumeRenderer::initGL()
     glfwMakeContextCurrent(window);
 
 
-//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSwapInterval(1);
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to initialize GLAD" << std::endl;
@@ -161,6 +188,18 @@ void SimpleVolumeRenderer::initGL()
         exit(-1);
     }
     glEnable(GL_DEPTH_TEST);
+}
+void SimpleVolumeRenderer::initIMGUI() {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window,true);
+    ImGui_ImplOpenGL3_Init();
+
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
 }
 
 void SimpleVolumeRenderer::setupProxyCube(GLfloat x, GLfloat y, GLfloat z)
@@ -279,3 +318,4 @@ SimpleVolumeRenderer::~SimpleVolumeRenderer()
 {
     deleteGLResource();
 }
+

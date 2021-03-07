@@ -13,6 +13,10 @@
 #include<list>
 #include<unordered_set>
 #include<sv/Utils/boundingbox.h>
+#include<imgui.h>
+#include<imgui_impl_glfw.h>
+#include<imgui_impl_opengl3.h>
+
 #define Block_Raycasting_Shader_V "C:/Users/wyz/projects/VolumeRenderer/src/render/shader/block_raycast_v.glsl"
 #define Block_Raycasting_Shader_F "C:/Users/wyz/projects/VolumeRenderer/src/render/shader/block_raycast_f.glsl"
 struct Myhash{
