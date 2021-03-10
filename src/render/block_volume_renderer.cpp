@@ -5,6 +5,9 @@
 #include<utils/help_gl.h>
 #include<data/block_volume_manager.h>
 #include<cudaGL.h>
+#include<imgui.h>
+#include<imgui_impl_glfw.h>
+#include<imgui_impl_opengl3.h>
 
 #define B_TF_TEX_BINDING 0
 #define B_PTF_TEX_BINDING 1
@@ -19,15 +22,15 @@ BlockVolumeRenderer::BlockVolumeRenderer()
   block_dim({0,0,0}), cu_context(nullptr)
 {
     initGL();
+    initImGui();
     initCUDA();
     volume_manager=std::make_unique<BlockVolumeManager>();
-    camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(128.f,128.f,256.f),window_width/2,window_height/2);
-
+    camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(16*512.f,22*512.f,6*512.f),window_width/2,window_height/2);
+//    camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(128.f,128.f,256.f),window_width/2,window_height/2);
 }
 void BlockVolumeRenderer::setupVolume(const char *file_path)
 {
     volume_manager->setupVolumeData(file_path);
-
 
 }
 
@@ -36,7 +39,8 @@ void BlockVolumeRenderer::setupTransferFunc(std::map<uint8_t, std::array<double,
     volume_manager-> setupTransferFunc(color_setting);
     glGenTextures(1,&transfer_func_tex);
     glBindTexture(GL_TEXTURE_1D,transfer_func_tex);
-//    GL_EXPR(glBindTextureUnit(TF_TEXTURE_BINDING,transfer_func_tex));
+//    glCreateTextures(GL_TEXTURE_1D,1,&transfer_func_tex);
+//    GL_EXPR(glBindTextureUnit(B_TF_TEX_BINDING,transfer_func_tex));
     glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_1D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
@@ -44,7 +48,7 @@ void BlockVolumeRenderer::setupTransferFunc(std::map<uint8_t, std::array<double,
 
     glGenTextures(1,&preInt_tf_tex);
     glBindTexture(GL_TEXTURE_2D,preInt_tf_tex);
-//    glBindTextureUnit(PREINT_TF_TEXTURE_BINDING,preInt_tf_tex);
+    glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
@@ -74,14 +78,19 @@ void BlockVolumeRenderer::init()
 
 void BlockVolumeRenderer::bindGLTextureUnit()
 {
+//    std::cout<<__FUNCTION__<<std::endl;
+    spdlog::info("{0}",__FUNCTION__);
+
     GL_EXPR(glBindTextureUnit(B_TF_TEX_BINDING,transfer_func_tex));
-    GL_EXPR(glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex));
+//    GL_EXPR(glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex));
     GL_EXPR(glBindTextureUnit(B_VOL_TEX_0_BINDING,volume_texes[0]));
     GL_EXPR(glBindTextureUnit(B_VOL_TEX_1_BINDING,volume_texes[1]));
     GL_EXPR(glBindTextureUnit(B_VOL_TEX_2_BINDING,volume_texes[2]));
-    glBindSampler(volume_texes[0],gl_sampler);
-    glBindSampler(volume_texes[1],gl_sampler);
-    glBindSampler(volume_texes[2],gl_sampler);
+
+    GL_EXPR(glBindSampler(B_VOL_TEX_0_BINDING,gl_sampler));
+    glBindSampler(B_VOL_TEX_1_BINDING,gl_sampler);
+    glBindSampler(B_VOL_TEX_2_BINDING,gl_sampler);
+    GL_CHECK
 }
 
 void BlockVolumeRenderer::setupShaderUniform()
@@ -98,12 +107,12 @@ void BlockVolumeRenderer::setupShaderUniform()
     raycasting_shader->setInt("window_height",window_height);
     raycasting_shader->setVec3("view_pos",camera->view_pos);
     raycasting_shader->setVec3("view_direction",camera->view_direction);
-    raycasting_shader->setFloat("view_depth",camera->f);
+    raycasting_shader->setFloat("view_depth",camera->f-camera->n);
     raycasting_shader->setVec3("view_right",camera->right);
     raycasting_shader->setVec3("view_up",camera->up);
     raycasting_shader->setFloat("view_right_space",camera->space_x);
     raycasting_shader->setFloat("view_up_space",camera->space_y);
-    raycasting_shader->setFloat("step",0.3f);
+    raycasting_shader->setFloat("step",camera->space_z);
     raycasting_shader->setVec4("bg_color",0.f,0.f,0.f,0.f);
     raycasting_shader->setInt("block_length",block_length);
     raycasting_shader->setInt("padding",padding);
@@ -173,6 +182,8 @@ void BlockVolumeRenderer::render()
 
         render_frame();
 
+        render_imgui();
+
         //6.final
         glfwSwapBuffers(window);
     }
@@ -180,6 +191,7 @@ void BlockVolumeRenderer::render()
 }
 void BlockVolumeRenderer::updateCameraUniform()
 {
+//    spdlog::info("{0}",__FUNCTION__ );
     raycasting_shader->use();
     raycasting_shader->setVec3("view_pos",camera->view_pos);
     raycasting_shader->setVec3("view_direction",camera->view_direction);
@@ -187,11 +199,14 @@ void BlockVolumeRenderer::updateCameraUniform()
     raycasting_shader->setVec3("view_up",camera->up);
     raycasting_shader->setFloat("view_right_space",camera->space_x);
     raycasting_shader->setFloat("view_up_space",camera->space_y);
-
+    raycasting_shader->setFloat("step",camera->space_z);
+    raycasting_shader->setFloat("view_depth",camera->f-camera->n);
 }
 
 void BlockVolumeRenderer::render_frame()
 {
+//    spdlog::info("{0}",__FUNCTION__ );
+
     raycasting_shader->use();
 
     glBindVertexArray(screen_quad_vao);
@@ -200,6 +215,43 @@ void BlockVolumeRenderer::render_frame()
 
 }
 
+void BlockVolumeRenderer::render_imgui()
+{
+//    spdlog::info("{0}",__FUNCTION__ );
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    static float f=1.f,f1;
+    static int a[3];
+    {
+        //开始绘制ImGui
+
+        ImGui::Begin("Simple Volume Renderer");
+        ImGui::InputFloat3("camera pos",&camera->view_pos.x);
+        ImGui::InputFloat3("view direction",&camera->view_direction.x);
+        ImGui::SliderFloat("camera near",&camera->n,0.f,block_length/2-1.f);
+        ImGui::SliderFloat("camera far",&camera->f,block_length/2,block_length*2);
+//        ImGui::Indent();
+
+
+        ImGui::SliderFloat("ray step", &camera->space_z, 0.1f, 1.0f);
+
+        ImGui::Indent();
+        ImGui::Text("%.1f voxel per pixel",camera->space_x);
+        ImGui::Text("FPS: %.1f",ImGui::GetIO().Framerate);
+
+//            ImGui::SameLine();
+        ImGui::Indent(); //另起一行制表符开始绘制Button
+//            ImGui::Button("button", ImVec2(100, 50));
+
+            ImGui::ShowDemoWindow();
+        ImGui::End();
+    }
+    ImGui::EndFrame();
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+}
 
 
 void BlockVolumeRenderer::deleteGLTexture()
@@ -223,7 +275,6 @@ void BlockVolumeRenderer::initCUDA()
 void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_t,3> idx)
 {
     //inspect if idx is still in current_blocks
-
 
     //getTexturePos() set valid=false cached=false
 
@@ -266,6 +317,7 @@ void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_
         CUDA_DRIVER_API_CALL(cuMemcpy3D(&m));
 
         CUDA_DRIVER_API_CALL(cuGraphicsUnmapResources(1, &cu_resources[tex_pos_index[2]], 0));
+        spdlog::info("finish cuda opengl copy");
     }
     //update volume_tex_manager
 
@@ -286,10 +338,14 @@ void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_
     mapping_table[flat_idx*4+1]=tex_pos_index[1];
     mapping_table[flat_idx*4+2]=tex_pos_index[2];
     mapping_table[flat_idx*4+3]=1;
+    spdlog::info("float_idx: {0}",flat_idx);
+    spdlog::info("idx: {0} {1} {2}",idx[0],idx[1],idx[2]);
+    spdlog::info("tex_pox_index:{0} {1} {2}",tex_pos_index[0],tex_pos_index[1],tex_pos_index[2]);
 }
 void BlockVolumeRenderer::updateMappingTable() {
+    spdlog::info("{0}",__FUNCTION__ );
 
-    glNamedBufferSubData(mapping_table_ssbo,0,mapping_table.size()*sizeof(uint32_t),mapping_table.data());
+    GL_EXPR(glNamedBufferSubData(mapping_table_ssbo,0,mapping_table.size()*sizeof(uint32_t),mapping_table.data()));
 
 }
 void BlockVolumeRenderer::initGL()
@@ -316,6 +372,17 @@ void BlockVolumeRenderer::initGL()
     }
 
     glEnable(GL_DEPTH_TEST);
+}
+
+void BlockVolumeRenderer::initImGui()
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window,true);
+    ImGui_ImplOpenGL3_Init();
 }
 
 void BlockVolumeRenderer::createGLResource() {
@@ -465,7 +532,6 @@ void BlockVolumeRenderer::createVolumeTexManager() {
 }
 bool BlockVolumeRenderer::getTexturePos(const std::array<uint32_t,3>& idx,std::array<uint32_t, 3>& pos)
 {
-
     for(auto&it :volume_tex_manager){
         if(it.block_index==idx && it.cached && !it.valid){
             pos=it.pos_index;
@@ -510,26 +576,30 @@ void BlockVolumeRenderer::deleteCUgraphicsResource() {
 }
 
 void BlockVolumeRenderer::createGLTexture() {
+    spdlog::info("{}",__FUNCTION__);
     assert(block_length && vol_tex_block_nx && vol_tex_block_ny && vol_tex_num);
     assert(volume_texes.size()==0);
     volume_texes.assign(vol_tex_num, 0);
-    std::cout<<__FUNCTION__ <<std::endl;
+
     glCreateTextures(GL_TEXTURE_3D, vol_tex_num, volume_texes.data());
     for(int i=0; i < vol_tex_num; i++){
+//        GL_EXPR(glBindTextureUnit(i+2,volume_texes[i]));
         glTextureStorage3D(volume_texes[i],1,GL_R8,vol_tex_block_nx*block_length,
                                                    vol_tex_block_ny*block_length,
                                                    block_length);
     }
-
+    GL_CHECK
 }
 void BlockVolumeRenderer::createGLSampler() {
-    glCreateSamplers(1,&gl_sampler);
-    glSamplerParameterf(gl_sampler,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-    glSamplerParameterf(gl_sampler,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    GL_EXPR(glCreateSamplers(1,&gl_sampler));
+    GL_EXPR(glSamplerParameterf(gl_sampler,GL_TEXTURE_MIN_FILTER,GL_LINEAR));
+    GL_EXPR(glSamplerParameterf(gl_sampler,GL_TEXTURE_MAG_FILTER,GL_LINEAR));
     float color[4]={0.f,0.f,0.f,0.f};
-    glSamplerParameterfv(gl_sampler,GL_CLAMP_TO_BORDER,color);
-//    glSamplerParameterfv(gl_sampler,GL_CLAMP_TO_BORDER,color);
-//    glSamplerParameterfv(gl_sampler,GL_CLAMP_TO_BORDER,color);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_BORDER);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_BORDER);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_BORDER);
+
+    GL_EXPR(glSamplerParameterfv(gl_sampler,GL_TEXTURE_BORDER_COLOR,color));
 }
 
 BlockRequestInfo BlockVolumeRenderer::getBlockRequestInfo() {
@@ -582,8 +652,17 @@ void BlockVolumeRenderer::print_args()
 
 BlockVolumeRenderer::~BlockVolumeRenderer() {
     deleteCUgraphicsResource();
+    deleteGLResource();
+}
+void BlockVolumeRenderer::deleteGLResource() {
     deleteGLTexture();
-
+    glDeleteBuffers(1,&mapping_table_ssbo);
+    glDeleteSamplers(1,&gl_sampler);
+    glDeleteTextures(1,&transfer_func_tex);
+    glDeleteTextures(1,&preInt_tf_tex);
+    glDeleteVertexArrays(1,&screen_quad_vao);
+    glDeleteBuffers(1,&screen_quad_vbo);
+    GL_CHECK
 }
 
 
@@ -612,14 +691,15 @@ void BlockVolumeRenderer::setupController()
 {
     static bool clicked;
     framebuffer_resize_callback=[&](GLFWwindow *window, int width, int height){
+
         std::cout<<__FUNCTION__ <<std::endl;
     };
     mouse_button_callback=[&](GLFWwindow* window, int button, int action, int mods){
         if(button==GLFW_MOUSE_BUTTON_LEFT && action==GLFW_PRESS){
-            print("mouse button left pressed");
+//            print("mouse button left pressed");
         }
         else if(button==GLFW_MOUSE_BUTTON_RIGHT && action==GLFW_PRESS){
-            print("mouse button right pressed");
+//            print("mouse button right pressed");
         }
     };
     mouse_move_callback=[&](GLFWwindow *window, double xpos, double ypos){
@@ -674,6 +754,9 @@ void BlockVolumeRenderer::setupController()
             camera->processMovementByKey(sv::CameraMoveDirection::DOWN, delta_time);
     };
 }
+
+
+
 
 
 

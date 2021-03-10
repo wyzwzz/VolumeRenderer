@@ -34,8 +34,8 @@ namespace sv {
 
         last_x = xpos;
         last_y = ypos;
-
-        camera.processMouseMovement(dx, dy);
+        if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+            camera.processMouseMovement(dx, dy);
     }
 
     void sv::Controller::ScrollCallback(GLFWwindow *window, double xoffset, double yoffset) {

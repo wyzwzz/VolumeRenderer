@@ -3,7 +3,8 @@
 //
 #include<data/block_volume_manager.h>
 #include<assert.h>
-#define WORKER_NUM 5
+#include<spdlog/spdlog.h>
+#define WORKER_NUM 3
 BlockVolumeManager::BlockVolumeManager()
 :jobs(WORKER_NUM),stop(false)
 {
@@ -66,8 +67,10 @@ void BlockVolumeManager::startTask() {
             }
 
             for(int i=0;i<worker_status.size();i++){
+                std::cout<<"worker: "<<i<<std::endl;
                 if(!worker_status[i]._a){
                     worker_status[i]._a=true;
+                    std::cout<<"packages size: "<<packages.size()<<std::endl;
                     BlockDesc package;
                     {
                         //wait for packages
@@ -83,19 +86,24 @@ void BlockVolumeManager::startTask() {
                         package = packages.front();
                         packages.pop_front();
                     }
-
+                    std::cout<<"using worker: "<<i<<std::endl;
                     jobs.AppendTask([&](int index,BlockDesc block_desc){
                         std::cout<<"start job"<<std::endl;
                         std::vector<std::vector<uint8_t>> packet;
+                        spdlog::info("get packet");
                         volume_data->getPacket(block_desc.block_index,packet);
                         uint64_t block_byte_size=(uint64_t)block_length*block_length*block_length;
+                        spdlog::info("get cuda mem");
                         CUdeviceptr cu_ptr=memory_pool.getCUMem();//atomic read???
+                        spdlog::info("start uncompress");
                         workers[index]->uncompress((uint8_t*)cu_ptr,block_byte_size,packet);
+                        spdlog::info("finish uncompress");
                         block_desc.data=cu_ptr;
                         block_desc.size=block_byte_size;
                         products.push_back(block_desc);//wait while full is implied in push_back()
                         worker_status[index]._a=false;
                         worker_cv.notify_one();
+                        std::cout<<"finish job"<<std::endl;
                     },i,std::move(package));
                 }
             }
@@ -119,6 +127,7 @@ bool BlockVolumeManager::getBlock(BlockDesc & block)
 
 void BlockVolumeManager::updateMemoryPool(CUdeviceptr ptr)
 {
+    std::cout<<__FUNCTION__<<std::endl;
     assert(memory_pool.m.size()==memory_pool.m_status.size());
     for(size_t i=0;i<memory_pool.m.size();i++){
         if(memory_pool.m[i]==ptr){

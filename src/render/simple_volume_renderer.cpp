@@ -104,6 +104,7 @@ void SimpleVolumeRenderer::render()
         glm::mat4 projection=glm::perspective(glm::radians(sv::Controller::getCamera().getZoom()),
                                                            (float)window_width/(float)window_height,
                                                            0.1f,50.0f);
+//        auto projection=glm::ortho(-0.5f,0.5f,-0.5f,0.5f,0.1f,5.f);
         glm::mat4 mvp=projection*view*model;
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -148,7 +149,7 @@ void SimpleVolumeRenderer::render()
             ImGui::Indent(); //另起一行制表符开始绘制Button
 //            ImGui::Button("button", ImVec2(100, 50));
 
-            ImGui::ShowDemoWindow();
+//            ImGui::ShowDemoWindow();
             ImGui::End();
         }
         ImGui::EndFrame();

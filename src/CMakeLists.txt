@@ -36,7 +36,7 @@ message(STATUS ${GLFW_LIBS})
 
 target_link_libraries(sv_core PRIVATE
         ${CUDA_CUDA_LIBRARY}
-        ${GLFW_LIBS}  ${CMAKE_DL_LIBS}  imgui voxel_compress voxel_uncompress)
+        ${GLFW_LIBS}  ${CMAKE_DL_LIBS}  imgui voxel_compress voxel_uncompress spdlog::spdlog)
 set_target_properties(
         sv_core
         PROPERTIES

@@ -75,25 +75,29 @@ private:
 public:
     struct MemoryPool{
         CUdeviceptr getCUMem(){
-            std::unique_lock<std::mutex> lk(mtx);
-            cv.wait(lk,[&](){
+            {
+                std::unique_lock<std::mutex> lk(mtx);
+                cv.wait(lk,[&](){
+                    for(int i=0;i<m_status.size();i++){
+                        //mutex?
+                        if(!m_status[i]._a){
+                            return true;
+                        }
+                    }
+                    std::cout<<"all allocated cuda memory used!"<<std::endl;
+                    return false;
+                });
+                std::cout<<"find cuda mem"<<std::endl;
                 for(int i=0;i<m_status.size();i++){
                     //mutex?
+
                     if(!m_status[i]._a){
-                        return true;
+                        m_status[i]._a=true;
+                        return m[i];
                     }
                 }
-                std::cout<<"all allocated cuda memory used!"<<std::endl;
-                return false;
-            });
-            for(int i=0;i<m_status.size();i++){
-                //mutex?
-
-                if(!m_status[i]._a){
-                    m_status[i]._a=true;
-                    return m[i];
-                }
             }
+            cv.notify_one();
         }
         std::condition_variable cv;
         std::mutex mtx;

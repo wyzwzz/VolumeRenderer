@@ -4,6 +4,7 @@
 
 #ifndef VOLUMERENDERER_HELP_GL_H
 #define VOLUMERENDERER_HELP_GL_H
+#include<spdlog/spdlog.h>
 
 #define DEBUG
 #ifdef DEBUG
@@ -12,8 +13,7 @@
             GLenum gl_err; \
             exec;     \
             if((gl_err=glGetError())!=GL_NO_ERROR){ \
-                std::cout<<#exec<<" on line "<<__LINE__<<" of "<<__FILE__<<" caused GL error: "<< \
-                static_cast<unsigned>(gl_err)<<std::endl;                                         \
+                 spdlog::error("OpenGL error:{0:x} caused by {1} on line {2} of file:{3}",static_cast<unsigned int>(gl_err),#exec,__LINE__,__FILE__);     \
             }\
         };
 
@@ -21,8 +21,7 @@
          {       \
             GLenum gl_err; \
             if((gl_err=glGetError())!=GL_NO_ERROR){     \
-                std::cout<<"GL error: "<<static_cast<unsigned>(gl_err)<<" caused before line "<< \
-                __LINE__<<" in file "<<__FILE__<<std::endl; \
+            spdlog::error("OpenGL error: {0} caused before  on line {1} of file:{2}",static_cast<unsigned int>(gl_err),__LINE__,__FILE__);     \
             }\
          }
 

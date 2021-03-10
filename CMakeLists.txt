@@ -29,5 +29,7 @@ add_subdirectory(third_party/glfw)
 
 add_subdirectory(third_party/VolumeCompression)
 
+add_subdirectory(third_party/spdlog)
+
 
 

@@ -45,28 +45,28 @@ public:
 private:
     void initGL();
     void initCUDA();
-
+    void initImGui();
 
 
     void deleteGLResource();
     void deleteGLTexture();
+    void deleteCUgraphicsResource();
 
     void setupVolumeDataInfo();
-
     void createVirtualBoxes();
     void createMappingTable();
     void createVolumeTexManager();
     void createCUgraphicsResource();
-    void deleteCUgraphicsResource();
+
     void createGLResource();
     void createScreenQuad();
     void createGLTexture();
-    void bindGLTextureUnit();
     void createGLSampler();
 
     void updateMappingTable();
     void setupGPUMemory();
     void setupShaderUniform();
+    void bindGLTextureUnit();
     void updateCameraUniform();
 
 private:
@@ -75,7 +75,8 @@ private:
     void updateNewNeedBlocksInCache();
     bool getTexturePos(const std::array<uint32_t,3>&,std::array<uint32_t,3>&);
     void render_frame();
-    BlockRequestInfo getBlockRequestInfo();
+    void render_imgui();
+    auto getBlockRequestInfo()->BlockRequestInfo;
 
 public:
     void print_args();

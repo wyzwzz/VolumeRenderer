@@ -125,6 +125,7 @@ namespace sv {
         virtual void updateCameraVectors()=0;
 
     public:
+        glm::vec3 camera_pos;
         glm::vec3 view_pos;
         glm::vec3 view_direction;//keep unit
         glm::vec3 up,right;//keep unit
@@ -143,7 +144,8 @@ namespace sv {
         RayCastOrthoCamera(glm::vec3 view_pos,uint32_t half_w,uint32_t half_h):
         RayCastCamera(),half_x_n(half_w),half_y_n(half_h)
         {
-            this->view_pos=view_pos;
+
+            this->camera_pos=view_pos;
             this->world_up=glm::vec3(0.f,1.f,0.f);
             this->yaw=-90.f;
             this->pitch=0.f;
@@ -152,13 +154,13 @@ namespace sv {
             this->space_x=this->space_y=this->space_z=1.f;
 
             this->n=0.f;//assert!!!
-            this->f=256.f;
+            this->f=512.f;
 
             updateCameraVectors();
         }
         OBB getOBB(){
             assert(this->n==0.f);
-            auto center_pos=view_pos+view_direction*(f+n)/2.f;
+            auto center_pos=view_pos+view_direction*(f+3*n)/2.f;
             return OBB(center_pos,right,up,view_direction,half_x_n*space_x,half_y_n*space_y,(f+n)/2.f);
         }
         void setupOBB(OBB& obb){
@@ -189,13 +191,14 @@ namespace sv {
     inline void RayCastOrthoCamera::processMovementByKey(CameraMoveDirection direction, float delta_t) {
         float ds=move_speed*delta_t;
         switch (direction) {
-            case CameraMoveDirection::FORWARD: view_pos+=view_direction*ds;break;
-            case CameraMoveDirection::BACKWARD: view_pos-=view_direction*ds;break;
-            case CameraMoveDirection::LEFT: view_pos-=right*ds;break;
-            case CameraMoveDirection::RIGHT: view_pos+=right*ds;break;
-            case CameraMoveDirection::UP: view_pos+=up*ds;break;
-            case CameraMoveDirection::DOWN: view_pos-=up*ds;break;
+            case CameraMoveDirection::FORWARD: camera_pos+=view_direction*ds;break;
+            case CameraMoveDirection::BACKWARD: camera_pos-=view_direction*ds;break;
+            case CameraMoveDirection::LEFT: camera_pos-=right*ds;break;
+            case CameraMoveDirection::RIGHT: camera_pos+=right*ds;break;
+            case CameraMoveDirection::UP: camera_pos+=up*ds;break;
+            case CameraMoveDirection::DOWN: camera_pos-=up*ds;break;
         }
+        view_pos=camera_pos+view_direction*n;
     }
 
     inline void RayCastOrthoCamera::processMouseMove(float xoffset, float yoffset) {
@@ -214,24 +217,20 @@ namespace sv {
         if(yoffset>0){
             space_x+=0.1f;
             space_y+=0.1f;
-            space_z+=0.1f;
-            if(space_x>2.f){
-                space_x=2.f;
-                space_y=2.f;
-                space_z=2.f;
+            if(space_x>1.5f){
+                space_x=1.5f;
+                space_y=1.5f;
             }
         }
         else{
             space_x-=0.1f;
             space_y-=0.1f;
-            space_z-=0.1f;
             if(space_x<0.2f){
                 space_x=0.2f;
                 space_y=0.2f;
-                space_z=0.2f;
             }
         }
-        std::cout<<"space: "<<space_x<<std::endl;
+//        std::cout<<"space: "<<space_x<<std::endl;
     }
 
     inline void RayCastOrthoCamera::processKeyForArg(CameraDefinedKey arg) {
@@ -257,6 +256,7 @@ namespace sv {
         view_direction=glm::normalize(f);
         right=glm::normalize(glm::cross(view_direction,world_up));
         up=glm::normalize(glm::cross(right,view_direction));
+        this->view_pos=camera_pos+view_direction*n;
     }
 
 
