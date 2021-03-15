@@ -32,7 +32,7 @@ BlockVolumeRenderer::BlockVolumeRenderer()
     initCUDA();
     volume_manager=std::make_unique<BlockVolumeManager>();
     camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(16*512.f,22*512.f,6*512.f),
-                                                    window_width/2,window_height/2,true);
+                                                    window_width/2,window_height/2, false);
 //    camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(128.f,128.f,256.f),window_width/2,window_height/2);
 }
 void BlockVolumeRenderer::setupVolume(const char *file_path)
@@ -62,10 +62,55 @@ void BlockVolumeRenderer::setupTransferFunc(std::map<uint8_t, std::array<double,
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,TF_DIM,TF_DIM,0,GL_RGBA,GL_FLOAT, volume_manager->getTransferFunc(true).data());
 }
+void BlockVolumeRenderer::initGL()
+{
+    spdlog::debug("{0}",__FUNCTION__ );
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    window = glfwCreateWindow(window_width, window_height, "Volume Render", NULL, NULL);
+    if (window == nullptr) {
+        glfwTerminate();
+        throw std::runtime_error("Failed to create GLFW window");
+    }
+
+    glfwMakeContextCurrent(window);
+
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSwapInterval(1);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        glfwTerminate();
+        throw std::runtime_error("Failed to initialize GLAD");
+    }
+
+    glEnable(GL_DEPTH_TEST);
+}
+
+void BlockVolumeRenderer::initImGui()
+{
+    spdlog::debug("{0}",__FUNCTION__ );
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window,true);
+    ImGui_ImplOpenGL3_Init();
+}
+
+void BlockVolumeRenderer::initCUDA()
+{
+    CUDA_DRIVER_API_CALL(cuInit(0));
+    CUdevice cuDevice=0;
+    CUDA_DRIVER_API_CALL(cuDeviceGet(&cuDevice, 0));
+    CUDA_DRIVER_API_CALL(cuCtxCreate(&cu_context,0,cuDevice));
+}
 
 void BlockVolumeRenderer::init()
 {
-
     setupController();
 
     setupVolumeDataInfo();
@@ -81,21 +126,141 @@ void BlockVolumeRenderer::init()
 
     setupShaderUniform();
     bindGLTextureUnit();
+
+}
+void BlockVolumeRenderer::setupVolumeDataInfo() {
+    spdlog::info("{0}",__FUNCTION__ );
+    auto volume_data_info=volume_manager->getVolumeDataInfo();
+    this->block_length=volume_data_info.block_length;
+    this->padding=volume_data_info.padding;
+    this->block_dim={volume_data_info.block_dim_x,volume_data_info.block_dim_y,volume_data_info.block_dim_z};
+
 }
 
-void BlockVolumeRenderer::bindGLTextureUnit()
+void BlockVolumeRenderer::setupGPUMemory() {
+    spdlog::info("{0}",__FUNCTION__ );
+    int nx=(window_width+block_length-1)/block_length*2;
+    int ny=(window_height+block_length-1)/block_length*2;
+    vol_tex_block_nx=nx;
+    vol_tex_block_ny=ny;
+    vol_tex_num=3;
+}
+
+void BlockVolumeRenderer::createGLResource() {
+    spdlog::debug("{0}",__FUNCTION__ );
+    //create shader
+    raycasting_shader=std::make_unique<sv::Shader>(Block_Raycasting_Shader_V,Block_Raycasting_Shader_F);
+    createScreenQuad();
+
+}
+
+void BlockVolumeRenderer::createScreenQuad()
 {
-    spdlog::info("{0}",__FUNCTION__);
+    spdlog::debug("{0}",__FUNCTION__ );
+    screen_quad_vertices={
+            -1.0f,  1.0f,  0.0f, 1.0f,
+            -1.0f, -1.0f,  0.0f, 0.0f,
+            1.0f, -1.0f,  1.0f, 0.0f,
 
-    GL_EXPR(glBindTextureUnit(B_TF_TEX_BINDING,transfer_func_tex));
-    GL_EXPR(glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex));
-    GL_EXPR(glBindTextureUnit(B_VOL_TEX_0_BINDING,volume_texes[0]));
-    GL_EXPR(glBindTextureUnit(B_VOL_TEX_1_BINDING,volume_texes[1]));
-    GL_EXPR(glBindTextureUnit(B_VOL_TEX_2_BINDING,volume_texes[2]));
+            -1.0f,  1.0f,  0.0f, 1.0f,
+            1.0f, -1.0f,  1.0f, 0.0f,
+            1.0f,  1.0f,  1.0f, 1.0f
+    };
 
-    GL_EXPR(glBindSampler(B_VOL_TEX_0_BINDING,gl_sampler));
-    glBindSampler(B_VOL_TEX_1_BINDING,gl_sampler);
-    glBindSampler(B_VOL_TEX_2_BINDING,gl_sampler);
+    glGenVertexArrays(1,&screen_quad_vao);
+    glGenBuffers(1,&screen_quad_vbo);
+    glBindVertexArray(screen_quad_vao);
+    glBindBuffer(GL_ARRAY_BUFFER,screen_quad_vbo);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(screen_quad_vertices),screen_quad_vertices.data(),GL_STATIC_DRAW);
+    glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,4*sizeof(float),(void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,4*sizeof(float),(void*)(2*sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindVertexArray(0);
+}
+
+void BlockVolumeRenderer::createGLTexture() {
+    spdlog::debug("{0}",__FUNCTION__ );
+    assert(block_length && vol_tex_block_nx && vol_tex_block_ny && vol_tex_num);
+    assert(volume_texes.size()==0);
+    volume_texes.assign(vol_tex_num, 0);
+
+    glCreateTextures(GL_TEXTURE_3D, vol_tex_num, volume_texes.data());
+    for(int i=0; i < vol_tex_num; i++){
+//        GL_EXPR(glBindTextureUnit(i+2,volume_texes[i]));
+        glTextureStorage3D(volume_texes[i],1,GL_R8,vol_tex_block_nx*block_length,
+                           vol_tex_block_ny*block_length,
+                           block_length);
+    }
+    GL_CHECK
+}
+
+void BlockVolumeRenderer::createGLSampler() {
+    spdlog::debug("{0}",__FUNCTION__ );
+    GL_EXPR(glCreateSamplers(1,&gl_sampler));
+    GL_EXPR(glSamplerParameterf(gl_sampler,GL_TEXTURE_MIN_FILTER,GL_LINEAR));
+    GL_EXPR(glSamplerParameterf(gl_sampler,GL_TEXTURE_MAG_FILTER,GL_LINEAR));
+    float color[4]={0.f,0.f,0.f,0.f};
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_BORDER);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_BORDER);
+    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_BORDER);
+
+    GL_EXPR(glSamplerParameterfv(gl_sampler,GL_TEXTURE_BORDER_COLOR,color));
+}
+
+void BlockVolumeRenderer::createCUgraphicsResource() {
+    spdlog::info("{0}",__FUNCTION__ );
+    assert(vol_tex_num == volume_texes.size() && vol_tex_num != 0);
+    cu_resources.resize(volume_texes.size());
+    for(int i=0;i<volume_texes.size();i++){
+        CUDA_DRIVER_API_CALL(cuGraphicsGLRegisterImage(&cu_resources[i], volume_texes[i],GL_TEXTURE_3D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
+    }
+
+}
+/**
+ * call after getting volume textures size
+ */
+void BlockVolumeRenderer::createVolumeTexManager() {
+    spdlog::debug("{0}",__FUNCTION__ );
+    assert(vol_tex_num == volume_texes.size());
+    for(uint32_t i=0;i<vol_tex_block_nx;i++){
+        for(uint32_t j=0;j<vol_tex_block_ny;j++){
+            for(uint32_t k=0; k < vol_tex_num; k++){
+                BlockTableItem item;
+                item.pos_index={i,j,k};
+                item.block_index={INVALID,INVALID,INVALID};
+                item.valid=false;
+                item.cached=false;
+                volume_tex_manager.push_back(std::move(item));
+            }
+        }
+    }
+}
+
+void BlockVolumeRenderer::createVirtualBoxes()
+{
+    spdlog::debug("{0}",__FUNCTION__ );
+    for(uint32_t z=0;z<block_dim[2];z++){
+        for(uint32_t y=0;y<block_dim[1];y++){
+            for(uint32_t x=0;x<block_dim[0];x++){
+                virtual_blocks.emplace_back(glm::vec3(x*block_length,y*block_length,z*block_length),
+                                            glm::vec3((x+1)*block_length,(y+1)*block_length,(z+1)*block_length),
+                                            std::array<uint32_t,3>{x,y,z});
+            }
+        }
+    }
+
+}
+void BlockVolumeRenderer::createMappingTable() {
+    spdlog::info("{0}",__FUNCTION__ );
+    mapping_table.assign(block_dim[0]*block_dim[1]*block_dim[2]*4,0);
+    glGenBuffers(1,&mapping_table_ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER,mapping_table_ssbo);
+    spdlog::info("mapping table size: {0}",mapping_table.size());
+//    std::cout<<"mapping table size: "<<mapping_table.size()<<std::endl;
+    GL_EXPR(glBufferData(GL_SHADER_STORAGE_BUFFER,mapping_table.size()*sizeof(uint32_t),mapping_table.data(),GL_DYNAMIC_READ));
+    //binding point = 0
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,mapping_table_ssbo);
     GL_CHECK
 }
 
@@ -136,6 +301,24 @@ void BlockVolumeRenderer::setupShaderUniform()
 
 }
 
+void BlockVolumeRenderer::bindGLTextureUnit()
+{
+    spdlog::info("{0}",__FUNCTION__);
+
+    GL_EXPR(glBindTextureUnit(B_TF_TEX_BINDING,transfer_func_tex));
+    GL_EXPR(glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex));
+    GL_EXPR(glBindTextureUnit(B_VOL_TEX_0_BINDING,volume_texes[0]));
+    GL_EXPR(glBindTextureUnit(B_VOL_TEX_1_BINDING,volume_texes[1]));
+    GL_EXPR(glBindTextureUnit(B_VOL_TEX_2_BINDING,volume_texes[2]));
+
+    GL_EXPR(glBindSampler(B_VOL_TEX_0_BINDING,gl_sampler));
+    glBindSampler(B_VOL_TEX_1_BINDING,gl_sampler);
+    glBindSampler(B_VOL_TEX_2_BINDING,gl_sampler);
+    GL_CHECK
+}
+
+
+
 std::function<void(GLFWwindow*,float)> process_input;
 void BlockVolumeRenderer::render()
 {
@@ -154,6 +337,7 @@ void BlockVolumeRenderer::render()
         //1.event process
         glfwPollEvents();
         process_input(window,delta_t);
+
         auto obb=camera->getOBB();
         updateCurrentBlocks(obb);
 
@@ -198,6 +382,7 @@ void BlockVolumeRenderer::render()
     }
 
 }
+
 void BlockVolumeRenderer::updateCameraUniform()
 {
 //    spdlog::info("{0}",__FUNCTION__ );
@@ -266,22 +451,6 @@ void BlockVolumeRenderer::render_imgui()
 
 }
 
-
-void BlockVolumeRenderer::deleteGLTexture()
-{
-    for(size_t i=0;i<volume_texes.size();i++){
-        CUDA_DRIVER_API_CALL(cuGraphicsUnregisterResource(cu_resources[i]));
-    }
-    GL_EXPR(glDeleteTextures(volume_texes.size(),volume_texes.data()));
-}
-
-void BlockVolumeRenderer::initCUDA()
-{
-    CUDA_DRIVER_API_CALL(cuInit(0));
-    CUdevice cuDevice=0;
-    CUDA_DRIVER_API_CALL(cuDeviceGet(&cuDevice, 0));
-    CUDA_DRIVER_API_CALL(cuCtxCreate(&cu_context,0,cuDevice));
-}
 /**
  * index, CUdeviceptr
  */
@@ -354,84 +523,13 @@ void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_
     spdlog::info("idx: {0} {1} {2}",idx[0],idx[1],idx[2]);
     spdlog::info("tex_pox_index:{0} {1} {2}",tex_pos_index[0],tex_pos_index[1],tex_pos_index[2]);
 }
+
 void BlockVolumeRenderer::updateMappingTable() {
 //    spdlog::info("{0}",__FUNCTION__ );
 
     GL_EXPR(glNamedBufferSubData(mapping_table_ssbo,0,mapping_table.size()*sizeof(uint32_t),mapping_table.data()));
 
 }
-void BlockVolumeRenderer::initGL()
-{
-    spdlog::debug("{0}",__FUNCTION__ );
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    window = glfwCreateWindow(window_width, window_height, "Volume Render", NULL, NULL);
-    if (window == nullptr) {
-        glfwTerminate();
-        throw std::runtime_error("Failed to create GLFW window");
-    }
-
-    glfwMakeContextCurrent(window);
-
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSwapInterval(1);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        glfwTerminate();
-        throw std::runtime_error("Failed to initialize GLAD");
-    }
-
-    glEnable(GL_DEPTH_TEST);
-}
-
-void BlockVolumeRenderer::initImGui()
-{
-    spdlog::debug("{0}",__FUNCTION__ );
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-
-    ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForOpenGL(window,true);
-    ImGui_ImplOpenGL3_Init();
-}
-
-void BlockVolumeRenderer::createGLResource() {
-    spdlog::debug("{0}",__FUNCTION__ );
-    //create shader
-    raycasting_shader=std::make_unique<sv::Shader>(Block_Raycasting_Shader_V,Block_Raycasting_Shader_F);
-    createScreenQuad();
-
-}
-void BlockVolumeRenderer::createScreenQuad()
-{
-    spdlog::debug("{0}",__FUNCTION__ );
-    screen_quad_vertices={
-            -1.0f,  1.0f,  0.0f, 1.0f,
-            -1.0f, -1.0f,  0.0f, 0.0f,
-            1.0f, -1.0f,  1.0f, 0.0f,
-
-            -1.0f,  1.0f,  0.0f, 1.0f,
-            1.0f, -1.0f,  1.0f, 0.0f,
-            1.0f,  1.0f,  1.0f, 1.0f
-    };
-
-    glGenVertexArrays(1,&screen_quad_vao);
-    glGenBuffers(1,&screen_quad_vbo);
-    glBindVertexArray(screen_quad_vao);
-    glBindBuffer(GL_ARRAY_BUFFER,screen_quad_vbo);
-    glBufferData(GL_ARRAY_BUFFER,sizeof(screen_quad_vertices),screen_quad_vertices.data(),GL_STATIC_DRAW);
-    glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,4*sizeof(float),(void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,4*sizeof(float),(void*)(2*sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glBindVertexArray(0);
-}
-
-
 
 void BlockVolumeRenderer::updateCurrentBlocks(const sv::OBB &view_box)
 {
@@ -482,6 +580,7 @@ void BlockVolumeRenderer::updateCurrentBlocks(const sv::OBB &view_box)
 
 
 }
+
 void BlockVolumeRenderer::updateNewNeedBlocksInCache()
 {
     for(auto& it:volume_tex_manager){
@@ -503,51 +602,7 @@ void BlockVolumeRenderer::updateNewNeedBlocksInCache()
     }
     updateMappingTable();
 }
-void BlockVolumeRenderer::createVirtualBoxes()
-{
-    spdlog::debug("{0}",__FUNCTION__ );
-    for(uint32_t z=0;z<block_dim[2];z++){
-        for(uint32_t y=0;y<block_dim[1];y++){
-            for(uint32_t x=0;x<block_dim[0];x++){
-                virtual_blocks.emplace_back(glm::vec3(x*block_length,y*block_length,z*block_length),
-                                            glm::vec3((x+1)*block_length,(y+1)*block_length,(z+1)*block_length),
-                                            std::array<uint32_t,3>{x,y,z});
-            }
-        }
-    }
 
-}
-void BlockVolumeRenderer::createMappingTable() {
-    spdlog::info("{0}",__FUNCTION__ );
-    mapping_table.assign(block_dim[0]*block_dim[1]*block_dim[2]*4,0);
-    glGenBuffers(1,&mapping_table_ssbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER,mapping_table_ssbo);
-    spdlog::info("mapping table size: {0}",mapping_table.size());
-//    std::cout<<"mapping table size: "<<mapping_table.size()<<std::endl;
-    GL_EXPR(glBufferData(GL_SHADER_STORAGE_BUFFER,mapping_table.size()*sizeof(uint32_t),mapping_table.data(),GL_DYNAMIC_READ));
-    //binding point = 0
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,mapping_table_ssbo);
-    GL_CHECK
-}
-/**
- * call after getting volume textures size
- */
-void BlockVolumeRenderer::createVolumeTexManager() {
-    spdlog::debug("{0}",__FUNCTION__ );
-    assert(vol_tex_num == volume_texes.size());
-    for(uint32_t i=0;i<vol_tex_block_nx;i++){
-        for(uint32_t j=0;j<vol_tex_block_ny;j++){
-            for(uint32_t k=0; k < vol_tex_num; k++){
-                BlockTableItem item;
-                item.pos_index={i,j,k};
-                item.block_index={INVALID,INVALID,INVALID};
-                item.valid=false;
-                item.cached=false;
-                volume_tex_manager.push_back(std::move(item));
-            }
-        }
-    }
-}
 bool BlockVolumeRenderer::getTexturePos(const std::array<uint32_t,3>& idx,std::array<uint32_t, 3>& pos)
 {
     for(auto&it :volume_tex_manager){
@@ -577,52 +632,6 @@ bool BlockVolumeRenderer::getTexturePos(const std::array<uint32_t,3>& idx,std::a
 
 }
 
-void BlockVolumeRenderer::createCUgraphicsResource() {
-    spdlog::info("{0}",__FUNCTION__ );
-    assert(vol_tex_num == volume_texes.size() && vol_tex_num != 0);
-    cu_resources.resize(volume_texes.size());
-    for(int i=0;i<volume_texes.size();i++){
-        CUDA_DRIVER_API_CALL(cuGraphicsGLRegisterImage(&cu_resources[i], volume_texes[i],GL_TEXTURE_3D, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD));
-    }
-
-}
-
-void BlockVolumeRenderer::deleteCUgraphicsResource() {
-    spdlog::debug("{0}",__FUNCTION__ );
-    assert(volume_texes.size()==cu_resources.size() && vol_tex_num == volume_texes.size() && vol_tex_num != 0);
-    for(int i=0;i<cu_resources.size();i++){
-        CUDA_DRIVER_API_CALL(cuGraphicsUnregisterResource(cu_resources[i]));
-    }
-}
-
-void BlockVolumeRenderer::createGLTexture() {
-    spdlog::debug("{0}",__FUNCTION__ );
-    assert(block_length && vol_tex_block_nx && vol_tex_block_ny && vol_tex_num);
-    assert(volume_texes.size()==0);
-    volume_texes.assign(vol_tex_num, 0);
-
-    glCreateTextures(GL_TEXTURE_3D, vol_tex_num, volume_texes.data());
-    for(int i=0; i < vol_tex_num; i++){
-//        GL_EXPR(glBindTextureUnit(i+2,volume_texes[i]));
-        glTextureStorage3D(volume_texes[i],1,GL_R8,vol_tex_block_nx*block_length,
-                                                   vol_tex_block_ny*block_length,
-                                                   block_length);
-    }
-    GL_CHECK
-}
-void BlockVolumeRenderer::createGLSampler() {
-    spdlog::debug("{0}",__FUNCTION__ );
-    GL_EXPR(glCreateSamplers(1,&gl_sampler));
-    GL_EXPR(glSamplerParameterf(gl_sampler,GL_TEXTURE_MIN_FILTER,GL_LINEAR));
-    GL_EXPR(glSamplerParameterf(gl_sampler,GL_TEXTURE_MAG_FILTER,GL_LINEAR));
-    float color[4]={0.f,0.f,0.f,0.f};
-    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_R,GL_CLAMP_TO_BORDER);
-    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_BORDER);
-    glSamplerParameterf(gl_sampler,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_BORDER);
-
-    GL_EXPR(glSamplerParameterfv(gl_sampler,GL_TEXTURE_BORDER_COLOR,color));
-}
-
 BlockRequestInfo BlockVolumeRenderer::getBlockRequestInfo() {
     BlockRequestInfo request;
     for(auto& it:new_need_blocks){
@@ -636,24 +645,6 @@ BlockRequestInfo BlockVolumeRenderer::getBlockRequestInfo() {
     no_need_blocks.clear();
     return request;
 
-}
-
-void BlockVolumeRenderer::setupVolumeDataInfo() {
-    spdlog::info("{0}",__FUNCTION__ );
-    auto volume_data_info=volume_manager->getVolumeDataInfo();
-    this->block_length=volume_data_info.block_length;
-    this->padding=volume_data_info.padding;
-    this->block_dim={volume_data_info.block_dim_x,volume_data_info.block_dim_y,volume_data_info.block_dim_z};
-
-}
-
-void BlockVolumeRenderer::setupGPUMemory() {
-    spdlog::info("{0}",__FUNCTION__ );
-    int nx=(window_width+block_length-1)/block_length*2;
-    int ny=(window_height+block_length-1)/block_length*2;
-    vol_tex_block_nx=nx;
-    vol_tex_block_ny=ny;
-    vol_tex_num=3;
 }
 
 void BlockVolumeRenderer::print_args()
@@ -673,10 +664,22 @@ void BlockVolumeRenderer::print_args()
     <<std::endl;
 }
 
-BlockVolumeRenderer::~BlockVolumeRenderer() {
-    deleteCUgraphicsResource();
-    deleteGLResource();
+void BlockVolumeRenderer::deleteGLTexture()
+{
+    for(size_t i=0;i<volume_texes.size();i++){
+        CUDA_DRIVER_API_CALL(cuGraphicsUnregisterResource(cu_resources[i]));
+    }
+    GL_EXPR(glDeleteTextures(volume_texes.size(),volume_texes.data()));
 }
+
+void BlockVolumeRenderer::deleteCUgraphicsResource() {
+    spdlog::debug("{0}",__FUNCTION__ );
+    assert(volume_texes.size()==cu_resources.size() && vol_tex_num == volume_texes.size() && vol_tex_num != 0);
+    for(int i=0;i<cu_resources.size();i++){
+        CUDA_DRIVER_API_CALL(cuGraphicsUnregisterResource(cu_resources[i]));
+    }
+}
+
 void BlockVolumeRenderer::deleteGLResource() {
     deleteGLTexture();
     glDeleteBuffers(1,&mapping_table_ssbo);
@@ -687,6 +690,13 @@ void BlockVolumeRenderer::deleteGLResource() {
     glDeleteBuffers(1,&screen_quad_vbo);
     GL_CHECK
 }
+
+BlockVolumeRenderer::~BlockVolumeRenderer() {
+    deleteCUgraphicsResource();
+    deleteGLResource();
+}
+
+
 
 
 std::function<void(GLFWwindow *window, int width, int height)> framebuffer_resize_callback;
@@ -794,18 +804,3 @@ void BlockVolumeRenderer::setupController()
         }
     };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
