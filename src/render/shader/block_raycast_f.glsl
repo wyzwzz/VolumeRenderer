@@ -19,9 +19,12 @@ uniform float ks;
 
 uniform int window_width;
 uniform int window_height;
+uniform bool is_camera_pers;
+
 uniform float step;
 uniform float view_depth;
-uniform vec3 view_pos;
+uniform vec3 view_pos;//near plane center not camera pos
+uniform vec3 camera_pos;
 uniform vec3 view_direction;//assert normalized
 uniform vec3 view_right;//assert normalized
 uniform vec3 view_up;//assert normalized
@@ -39,31 +42,54 @@ uniform ivec3 texture_size3;//size3 for cache_volume012
 bool virtualSample(vec3 samplePos,out vec4 scalar);
 
 vec3 phongShading(vec3 samplePos,vec3 diffuseColor);
-
+vec3 getVirtualOffset(vec3 samplePos);
 void main()
 {
     int x_pos=int(gl_FragCoord.x)-window_width/2;
     int y_pos=int(gl_FragCoord.y)-window_height/2;
     vec3 ray_start_pos=view_pos+x_pos*view_right*view_right_space+y_pos*view_up*view_up_space;
-    int steps=int(view_depth/step);
-//    frag_color=vec4(ray_start_pos.xy/256.f,0.f,0.f);
+    vec3 ray_stop_pos=ray_start_pos+view_direction*view_depth;
+    int steps=int(dot(ray_stop_pos-ray_start_pos,view_direction)/step);
+    vec3 ray_direction;
+     if(is_camera_pers){
+        ray_direction=normalize(ray_stop_pos-camera_pos);
+    }
+    else{
+        ray_direction=view_direction;
+    }
+//    frag_color=vec4(ray_direction,0.f);
 //    return;
     vec4 color=vec4(0.f);
     vec4 sample_scalar;
     vec4 sample_color;
-    vec3 sample_pos=ray_start_pos;
+    vec3 sample_start_pos;
+    vec3 sample_pos;
+    if(is_camera_pers){
+        sample_start_pos=camera_pos;
+    }
+    else{
+        sample_start_pos=ray_start_pos;
+    }
+    sample_pos=sample_start_pos;
     for(int i=0;i<steps;i++){
         bool continued=virtualSample(sample_pos,sample_scalar);
+
         if(!continued)
             break;
+
         if(sample_scalar.r>0.3f){
+
+//            frag_color=vec4(getVirtualOffset(sample_pos)/(block_length-2*padding),1.f);
+//            return ;
+
             sample_color=texture(transfer_func,sample_scalar.r);
             sample_color.rgb=phongShading(sample_pos,sample_color.rgb);
             color=color+sample_color*vec4(sample_color.aaa,1.f)*(1.f-color.a);
+
             if(color.a>0.9f)
                 break;
         }
-        sample_pos+=view_direction*step;
+        sample_pos=sample_start_pos+i*ray_direction*step;
     }
 
     if(color.a==0.f) discard;
@@ -73,7 +99,15 @@ void main()
 //    frag_color=vec4(view_direction,1.f);
 
 }
+vec3 getVirtualOffset(vec3 samplePos){
+    //1. first get virtual_index in block-dim
+    int no_padding_block_length=block_length-2*padding;
+    ivec3 virtual_block_idx=ivec3(samplePos/no_padding_block_length);
 
+    //2. get samplePos's offset in the block
+    vec3 offset_in_no_padding_block=samplePos-virtual_block_idx*no_padding_block_length;
+    return offset_in_no_padding_block;
+}
 // samplePos is raw world pos, measure in dim(raw_x,raw_y,raw_z)
 bool virtualSample(vec3 samplePos,out vec4 scalar)
 {

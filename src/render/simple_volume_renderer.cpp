@@ -68,6 +68,7 @@ void printmat4(glm::mat4 m)
              <<m[2][0]<<" "<<m[2][1]<<" "<<m[2][2]<<" "<<m[2][3]<<std::endl
              <<m[3][0]<<" "<<m[3][1]<<" "<<m[3][2]<<" "<<m[3][3]<<std::endl;
 }
+float step=256;
 void SimpleVolumeRenderer::setupShaderUniform()
 {
     raycasting_shader->use();
@@ -82,14 +83,17 @@ void SimpleVolumeRenderer::setupShaderUniform()
     raycasting_shader->setFloat("ks",1.0f);
     raycasting_shader->setVec3("light_direction",glm::normalize(glm::vec3(-1.0f,-1.0f,-1.0f)));
 
-    raycasting_shader->setFloat("step",1.0f/256*0.3f);
+    raycasting_shader->setFloat("step",1.0/step*0.3);
 
 }
 
 void SimpleVolumeRenderer::render()
 {
     GL_CHECK
+
     while(!glfwWindowShouldClose(window)){
+
+
         float current_frame=glfwGetTime();
         sv::Controller::delta_time=current_frame-sv::Controller::last_frame;
         sv::Controller::last_frame=current_frame;
@@ -126,7 +130,7 @@ void SimpleVolumeRenderer::render()
         glBindFramebuffer(GL_FRAMEBUFFER,0);
 
         raycasting_shader->use();
-
+        raycasting_shader->setFloat("step",1.0/step*0.3);
         glBindVertexArray(screen_quad_vao);
         glDrawArrays(GL_TRIANGLES,0,6);
 
@@ -136,13 +140,12 @@ void SimpleVolumeRenderer::render()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        static float f;
 
         {
             //开始绘制ImGui
 
             ImGui::Begin("Simple Volume Renderer");
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
+            ImGui::SliderFloat("ray step", &step, 1.f, 1024.f);
             ImGui::Indent(); //另起一行制表符开始绘制Button
             ImGui::Text("fps: %.1f",ImGui::GetIO().Framerate);
 //            ImGui::SameLine();

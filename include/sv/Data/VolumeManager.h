@@ -7,7 +7,7 @@
 #include <sv/Data/TransferFunc.h>
 #include <sv/Data/VolumeData.h>
 #include <memory>
-#include <utils/help_cuda.h>
+#include<cuda.h>
 struct BlockRequestInfo{
     //uncompress and load new blocks
     std::vector<std::array<uint32_t,3>> request_blocks_queue;

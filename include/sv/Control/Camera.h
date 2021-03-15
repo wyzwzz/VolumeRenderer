@@ -126,7 +126,7 @@ namespace sv {
 
     public:
         glm::vec3 camera_pos;
-        glm::vec3 view_pos;
+//        glm::vec3 view_pos;
         glm::vec3 view_direction;//keep unit
         glm::vec3 up,right;//keep unit
         glm::vec3 world_up;//keep unit
@@ -141,8 +141,8 @@ namespace sv {
     };
     class RayCastOrthoCamera: public RayCastCamera{
     public:
-        RayCastOrthoCamera(glm::vec3 view_pos,uint32_t half_w,uint32_t half_h):
-        RayCastCamera(),half_x_n(half_w),half_y_n(half_h)
+        RayCastOrthoCamera(glm::vec3 view_pos,uint32_t half_w,uint32_t half_h,bool is_pers=false):
+        RayCastCamera(),half_x_n(half_w),half_y_n(half_h),is_perspective(is_pers)
         {
 
             this->camera_pos=view_pos;
@@ -151,21 +151,31 @@ namespace sv {
             this->pitch=0.f;
             this->move_speed=1.f;
             this->move_sense=0.05f;
+            this->fov=20.f;
             this->space_x=this->space_y=this->space_z=1.f;
 
             this->n=0.f;//assert!!!
             this->f=512.f;
-
+            if(is_perspective){
+                setCameraMode(true);
+            }
             updateCameraVectors();
         }
         OBB getOBB(){
             assert(this->n==0.f);
-            auto center_pos=view_pos+view_direction*(f+3*n)/2.f;
-            return OBB(center_pos,right,up,view_direction,half_x_n*space_x,half_y_n*space_y,(f+n)/2.f);
+            auto center_pos=camera_pos+view_direction*(f+3*n)/2.f;
+            if(!is_perspective){
+                setCameraMode(false);
+                return OBB(center_pos,right,up,view_direction,half_x_n*space_x,half_y_n*space_y,(f+n)/2.f);
+            }
+            else{
+                setCameraMode(true);
+                return OBB(center_pos,right,up,view_direction,f*tanf(glm::radians(fov/2))*half_x_n/half_y_n,f*tanf(glm::radians(fov/2)),(f+n)/2.f);
+            }
         }
         void setupOBB(OBB& obb){
             assert(this->n==0.f);
-            obb.center_pos=view_pos+view_direction*(f+n)/2.f;;
+            obb.center_pos=camera_pos+view_direction*(f+3*n)/2.f;;
             obb.unit_x=right;
             obb.unit_y=up;
             obb.unit_z=view_direction;
@@ -180,13 +190,36 @@ namespace sv {
         void processMouseScroll(float yoffset);
         void processKeyForArg(CameraDefinedKey arg);
         void updateCameraVectors() override;
+        void updateSpaceXY();
+        void setCameraMode(bool is_pers){
+            this->is_perspective=is_pers;
+            if(is_perspective){
+                this->n=1.f;
+                this->f=512.f;
+                updateSpaceXY();
+            }
+            else{
+                if(this->space_x<0.1f){
+                    this->space_x=this->space_y=1.f;
+                }
+            }
+        }
+
+    private:
 
     public:
         float space_x,space_y,space_z;//x-direction and y-direction gap distance between two rays
         uint32_t half_x_n, half_y_n;
-
+        float fov;
+        bool is_perspective=false;
 
     };
+
+    inline void RayCastOrthoCamera::updateSpaceXY() {
+        this->space_y=this->f*tanf(glm::radians(fov/2))/this->half_y_n;
+        this->space_x=this->space_y;
+
+    }
 
     inline void RayCastOrthoCamera::processMovementByKey(CameraMoveDirection direction, float delta_t) {
         float ds=move_speed*delta_t;
@@ -198,7 +231,7 @@ namespace sv {
             case CameraMoveDirection::UP: camera_pos+=up*ds;break;
             case CameraMoveDirection::DOWN: camera_pos-=up*ds;break;
         }
-        view_pos=camera_pos+view_direction*n;
+
     }
 
     inline void RayCastOrthoCamera::processMouseMove(float xoffset, float yoffset) {
@@ -213,22 +246,33 @@ namespace sv {
         updateCameraVectors();
     }
 
-    inline void RayCastOrthoCamera::processMouseScroll(float yoffset) {
-        if(yoffset>0){
-            space_x+=0.1f;
-            space_y+=0.1f;
-            if(space_x>1.5f){
-                space_x=1.5f;
-                space_y=1.5f;
+    inline void RayCastOrthoCamera::processMouseScroll(float yoffset) {\
+        if(!is_perspective) {
+            if (yoffset > 0) {
+                space_x += 0.1f;
+                space_y += 0.1f;
+                if (space_x > 1.5f) {
+                    space_x = 1.5f;
+                    space_y = 1.5f;
+                }
+            } else {
+                space_x -= 0.1f;
+                space_y -= 0.1f;
+                if (space_x < 0.2f) {
+                    space_x = 0.2f;
+                    space_y = 0.2f;
+                }
             }
         }
         else{
-            space_x-=0.1f;
-            space_y-=0.1f;
-            if(space_x<0.2f){
-                space_x=0.2f;
-                space_y=0.2f;
+            fov+=yoffset;
+            if(fov<0.1f){
+                fov=0.1f;
             }
+            else if(fov>45.f){
+                fov=45.f;
+            }
+            updateSpaceXY();
         }
 //        std::cout<<"space: "<<space_x<<std::endl;
     }
@@ -256,20 +300,46 @@ namespace sv {
         view_direction=glm::normalize(f);
         right=glm::normalize(glm::cross(view_direction,world_up));
         up=glm::normalize(glm::cross(right,view_direction));
-        this->view_pos=camera_pos+view_direction*n;
+
     }
 
 
-
-
-
-
-
-
-
-
     class RayCastPerspectCamera: public RayCastCamera{
+    private:
+        float space_x,space_y;
+    public:
+        float fov,space_z;//x-direction and y-direction gap distance between two rays
+        uint32_t half_x_n, half_y_n;
+        RayCastPerspectCamera(glm::vec3 view_pos,uint32_t half_w,uint32_t half_h):
+        RayCastCamera(),half_x_n(half_w),half_y_n(half_h)
+        {
+            this->camera_pos=view_pos   ;
+            this->world_up=glm::vec3(0.f,1.f,0.f);
+            this->yaw=-90.f;
+            this->pitch=0.f;
+            this->move_speed=1.f;
+            this->move_sense=0.05f;
+            this->n=1.f;
+            this->f=512.f;
+            this->space_z=1.f;
+            this->fov=20.f;
+            updateSpaceXY();
+            updateCameraVectors();
+        }
 
+        void updateSpaceXY(){
+            this->space_y=this->n*tanf(glm::radians(fov/2))/this->half_y_n;
+            this->space_x=this->space_y;
+        };
+        void RayCastPerspectCamera::updateCameraVectors() {
+            glm::vec3 f;
+            f.x=std::cos(glm::radians(yaw))*std::cos(glm::radians(pitch));
+            f.y=std::sin(glm::radians(pitch));
+            f.z=std::sin(glm::radians(yaw))*std::cos(glm::radians(pitch));
+            view_direction=glm::normalize(f);
+            right=glm::normalize(glm::cross(view_direction,world_up));
+            up=glm::normalize(glm::cross(right,view_direction));
+        }
     };
 }
 

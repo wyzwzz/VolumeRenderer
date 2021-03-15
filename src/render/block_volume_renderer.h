@@ -98,6 +98,7 @@ private:
     std::vector<CUgraphicsResource> cu_resources;
     CUcontext cu_context;
 
+    bool should_redraw;
     /**
      * GL transfer function texture
      */

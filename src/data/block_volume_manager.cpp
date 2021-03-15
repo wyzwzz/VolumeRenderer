@@ -3,7 +3,7 @@
 //
 #include<data/block_volume_manager.h>
 #include<assert.h>
-#include<spdlog/spdlog.h>
+#include<utils/help_cuda.h>
 #define WORKER_NUM 3
 BlockVolumeManager::BlockVolumeManager()
 :jobs(WORKER_NUM),stop(false)

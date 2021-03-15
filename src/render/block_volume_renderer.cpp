@@ -2,9 +2,14 @@
 // Created by wyz on 20-12-4.
 //
 #include"block_volume_renderer.h"
+
 #include<utils/help_gl.h>
+#include<utils/help_cuda.h>
+
 #include<data/block_volume_manager.h>
+
 #include<cudaGL.h>
+
 #include<imgui.h>
 #include<imgui_impl_glfw.h>
 #include<imgui_impl_opengl3.h>
@@ -19,13 +24,15 @@ BlockVolumeRenderer::BlockVolumeRenderer()
 : window_width(1200), window_height(900),
   block_length(0), vol_tex_block_nx(0), vol_tex_block_ny(0),
   vol_tex_num(0),
-  block_dim({0,0,0}), cu_context(nullptr)
+  block_dim({0,0,0}), cu_context(nullptr),
+  should_redraw(true)
 {
     initGL();
     initImGui();
     initCUDA();
     volume_manager=std::make_unique<BlockVolumeManager>();
-    camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(16*512.f,22*512.f,6*512.f),window_width/2,window_height/2);
+    camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(16*512.f,22*512.f,6*512.f),
+                                                    window_width/2,window_height/2,true);
 //    camera=std::make_unique<sv::RayCastOrthoCamera>(glm::vec3(128.f,128.f,256.f),window_width/2,window_height/2);
 }
 void BlockVolumeRenderer::setupVolume(const char *file_path)
@@ -48,7 +55,7 @@ void BlockVolumeRenderer::setupTransferFunc(std::map<uint8_t, std::array<double,
 
     glGenTextures(1,&preInt_tf_tex);
     glBindTexture(GL_TEXTURE_2D,preInt_tf_tex);
-    glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex);
+//    glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
@@ -78,11 +85,10 @@ void BlockVolumeRenderer::init()
 
 void BlockVolumeRenderer::bindGLTextureUnit()
 {
-//    std::cout<<__FUNCTION__<<std::endl;
     spdlog::info("{0}",__FUNCTION__);
 
     GL_EXPR(glBindTextureUnit(B_TF_TEX_BINDING,transfer_func_tex));
-//    GL_EXPR(glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex));
+    GL_EXPR(glBindTextureUnit(B_PTF_TEX_BINDING,preInt_tf_tex));
     GL_EXPR(glBindTextureUnit(B_VOL_TEX_0_BINDING,volume_texes[0]));
     GL_EXPR(glBindTextureUnit(B_VOL_TEX_1_BINDING,volume_texes[1]));
     GL_EXPR(glBindTextureUnit(B_VOL_TEX_2_BINDING,volume_texes[2]));
@@ -105,7 +111,9 @@ void BlockVolumeRenderer::setupShaderUniform()
 
     raycasting_shader->setInt("window_width",window_width);
     raycasting_shader->setInt("window_height",window_height);
-    raycasting_shader->setVec3("view_pos",camera->view_pos);
+    raycasting_shader->setBool("is_camera_pers",camera->is_perspective);
+    raycasting_shader->setVec3("camera_pos",camera->camera_pos);
+    raycasting_shader->setVec3("view_pos",camera->camera_pos+camera->n*camera->view_direction);
     raycasting_shader->setVec3("view_direction",camera->view_direction);
     raycasting_shader->setFloat("view_depth",camera->f-camera->n);
     raycasting_shader->setVec3("view_right",camera->right);
@@ -176,6 +184,7 @@ void BlockVolumeRenderer::render()
 
         }
 
+
         //5.render a frame
         //ray stop if sample at an empty block
         updateCameraUniform();
@@ -193,7 +202,9 @@ void BlockVolumeRenderer::updateCameraUniform()
 {
 //    spdlog::info("{0}",__FUNCTION__ );
     raycasting_shader->use();
-    raycasting_shader->setVec3("view_pos",camera->view_pos);
+    raycasting_shader->setBool("is_camera_pers",camera->is_perspective);
+    raycasting_shader->setVec3("camera_pos",camera->camera_pos);
+    raycasting_shader->setVec3("view_pos",camera->camera_pos+camera->n*camera->view_direction);
     raycasting_shader->setVec3("view_direction",camera->view_direction);
     raycasting_shader->setVec3("view_right",camera->right);
     raycasting_shader->setVec3("view_up",camera->up);
@@ -205,7 +216,7 @@ void BlockVolumeRenderer::updateCameraUniform()
 
 void BlockVolumeRenderer::render_frame()
 {
-//    spdlog::info("{0}",__FUNCTION__ );
+    spdlog::trace("{0}",__FUNCTION__ );
 
     raycasting_shader->use();
 
@@ -217,36 +228,38 @@ void BlockVolumeRenderer::render_frame()
 
 void BlockVolumeRenderer::render_imgui()
 {
-//    spdlog::info("{0}",__FUNCTION__ );
+    spdlog::trace("{0}",__FUNCTION__ );
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    static float f=1.f,f1;
-    static int a[3];
-    {
-        //开始绘制ImGui
 
-        ImGui::Begin("Simple Volume Renderer");
-        ImGui::InputFloat3("camera pos",&camera->view_pos.x);
+    {
+        //begin draw ImGui
+
+        ImGui::Begin("Block Volume Renderer");
+        ImGui::RadioButton("ortho", reinterpret_cast<int *>(&camera->is_perspective), 0);
+        ImGui::RadioButton("perspective", reinterpret_cast<int *>(&camera->is_perspective), 1);
+        ImGui::InputFloat3("camera pos",&camera->camera_pos.x);
         ImGui::InputFloat3("view direction",&camera->view_direction.x);
         ImGui::SliderFloat("camera near",&camera->n,0.f,block_length/2-1.f);
         ImGui::SliderFloat("camera far",&camera->f,block_length/2,block_length*2);
 //        ImGui::Indent();
 
-
         ImGui::SliderFloat("ray step", &camera->space_z, 0.1f, 1.0f);
 
         ImGui::Indent();
-        ImGui::Text("%.1f voxel per pixel",camera->space_x);
+        ImGui::Text("%.5f voxel per pixel",camera->space_x);
         ImGui::Text("FPS: %.1f",ImGui::GetIO().Framerate);
 
 //            ImGui::SameLine();
-        ImGui::Indent(); //另起一行制表符开始绘制Button
+        ImGui::Indent();
 //            ImGui::Button("button", ImVec2(100, 50));
 
-            ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
         ImGui::End();
     }
+
     ImGui::EndFrame();
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -259,7 +272,7 @@ void BlockVolumeRenderer::deleteGLTexture()
     for(size_t i=0;i<volume_texes.size();i++){
         CUDA_DRIVER_API_CALL(cuGraphicsUnregisterResource(cu_resources[i]));
     }
-    glDeleteTextures(volume_texes.size(),volume_texes.data());
+    GL_EXPR(glDeleteTextures(volume_texes.size(),volume_texes.data()));
 }
 
 void BlockVolumeRenderer::initCUDA()
@@ -274,17 +287,15 @@ void BlockVolumeRenderer::initCUDA()
  */
 void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_t,3> idx)
 {
+    spdlog::info("{0}",__FUNCTION__ );
     //inspect if idx is still in current_blocks
 
     //getTexturePos() set valid=false cached=false
 
     std::array<uint32_t,3> tex_pos_index;
     bool cached=getTexturePos(idx,tex_pos_index);
-    //if cached, update map-table
-//    if(cached)
-//        std::cout<<"find cached block"<<std::endl;
 
-    std::cout<<__FUNCTION__ <<std::endl;
+
 //    print_array(tex_pos_index);
 
     if(!cached){
@@ -317,6 +328,7 @@ void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_
         CUDA_DRIVER_API_CALL(cuMemcpy3D(&m));
 
         CUDA_DRIVER_API_CALL(cuGraphicsUnmapResources(1, &cu_resources[tex_pos_index[2]], 0));
+
         spdlog::info("finish cuda opengl copy");
     }
     //update volume_tex_manager
@@ -343,13 +355,14 @@ void BlockVolumeRenderer::copyDeviceToTexture(CUdeviceptr ptr,std::array<uint32_
     spdlog::info("tex_pox_index:{0} {1} {2}",tex_pos_index[0],tex_pos_index[1],tex_pos_index[2]);
 }
 void BlockVolumeRenderer::updateMappingTable() {
-    spdlog::info("{0}",__FUNCTION__ );
+//    spdlog::info("{0}",__FUNCTION__ );
 
     GL_EXPR(glNamedBufferSubData(mapping_table_ssbo,0,mapping_table.size()*sizeof(uint32_t),mapping_table.data()));
 
 }
 void BlockVolumeRenderer::initGL()
 {
+    spdlog::debug("{0}",__FUNCTION__ );
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -376,6 +389,7 @@ void BlockVolumeRenderer::initGL()
 
 void BlockVolumeRenderer::initImGui()
 {
+    spdlog::debug("{0}",__FUNCTION__ );
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
@@ -386,7 +400,7 @@ void BlockVolumeRenderer::initImGui()
 }
 
 void BlockVolumeRenderer::createGLResource() {
-    std::cout<<__FUNCTION__<<std::endl;
+    spdlog::debug("{0}",__FUNCTION__ );
     //create shader
     raycasting_shader=std::make_unique<sv::Shader>(Block_Raycasting_Shader_V,Block_Raycasting_Shader_F);
     createScreenQuad();
@@ -394,6 +408,7 @@ void BlockVolumeRenderer::createGLResource() {
 }
 void BlockVolumeRenderer::createScreenQuad()
 {
+    spdlog::debug("{0}",__FUNCTION__ );
     screen_quad_vertices={
             -1.0f,  1.0f,  0.0f, 1.0f,
             -1.0f, -1.0f,  0.0f, 0.0f,
@@ -486,10 +501,11 @@ void BlockVolumeRenderer::updateNewNeedBlocksInCache()
             }
         }
     }
+    updateMappingTable();
 }
 void BlockVolumeRenderer::createVirtualBoxes()
 {
-    std::cout<<__FUNCTION__<<std::endl;
+    spdlog::debug("{0}",__FUNCTION__ );
     for(uint32_t z=0;z<block_dim[2];z++){
         for(uint32_t y=0;y<block_dim[1];y++){
             for(uint32_t x=0;x<block_dim[0];x++){
@@ -502,20 +518,22 @@ void BlockVolumeRenderer::createVirtualBoxes()
 
 }
 void BlockVolumeRenderer::createMappingTable() {
-    std::cout<<__FUNCTION__<<std::endl;
+    spdlog::info("{0}",__FUNCTION__ );
     mapping_table.assign(block_dim[0]*block_dim[1]*block_dim[2]*4,0);
     glGenBuffers(1,&mapping_table_ssbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER,mapping_table_ssbo);
-    std::cout<<"mapping table size: "<<mapping_table.size()<<std::endl;
-    glBufferData(GL_SHADER_STORAGE_BUFFER,mapping_table.size()*sizeof(uint32_t),mapping_table.data(),GL_DYNAMIC_READ);
+    spdlog::info("mapping table size: {0}",mapping_table.size());
+//    std::cout<<"mapping table size: "<<mapping_table.size()<<std::endl;
+    GL_EXPR(glBufferData(GL_SHADER_STORAGE_BUFFER,mapping_table.size()*sizeof(uint32_t),mapping_table.data(),GL_DYNAMIC_READ));
     //binding point = 0
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,0,mapping_table_ssbo);
+    GL_CHECK
 }
 /**
  * call after getting volume textures size
  */
 void BlockVolumeRenderer::createVolumeTexManager() {
-    std::cout<<__FUNCTION__<<std::endl;
+    spdlog::debug("{0}",__FUNCTION__ );
     assert(vol_tex_num == volume_texes.size());
     for(uint32_t i=0;i<vol_tex_block_nx;i++){
         for(uint32_t j=0;j<vol_tex_block_ny;j++){
@@ -554,12 +572,13 @@ bool BlockVolumeRenderer::getTexturePos(const std::array<uint32_t,3>& idx,std::a
             return false;
         }
     }
+    spdlog::critical("not find empty texture pos");
     throw std::runtime_error("not find empty texture pos");
 
 }
 
 void BlockVolumeRenderer::createCUgraphicsResource() {
-
+    spdlog::info("{0}",__FUNCTION__ );
     assert(vol_tex_num == volume_texes.size() && vol_tex_num != 0);
     cu_resources.resize(volume_texes.size());
     for(int i=0;i<volume_texes.size();i++){
@@ -569,6 +588,7 @@ void BlockVolumeRenderer::createCUgraphicsResource() {
 }
 
 void BlockVolumeRenderer::deleteCUgraphicsResource() {
+    spdlog::debug("{0}",__FUNCTION__ );
     assert(volume_texes.size()==cu_resources.size() && vol_tex_num == volume_texes.size() && vol_tex_num != 0);
     for(int i=0;i<cu_resources.size();i++){
         CUDA_DRIVER_API_CALL(cuGraphicsUnregisterResource(cu_resources[i]));
@@ -576,7 +596,7 @@ void BlockVolumeRenderer::deleteCUgraphicsResource() {
 }
 
 void BlockVolumeRenderer::createGLTexture() {
-    spdlog::info("{}",__FUNCTION__);
+    spdlog::debug("{0}",__FUNCTION__ );
     assert(block_length && vol_tex_block_nx && vol_tex_block_ny && vol_tex_num);
     assert(volume_texes.size()==0);
     volume_texes.assign(vol_tex_num, 0);
@@ -591,6 +611,7 @@ void BlockVolumeRenderer::createGLTexture() {
     GL_CHECK
 }
 void BlockVolumeRenderer::createGLSampler() {
+    spdlog::debug("{0}",__FUNCTION__ );
     GL_EXPR(glCreateSamplers(1,&gl_sampler));
     GL_EXPR(glSamplerParameterf(gl_sampler,GL_TEXTURE_MIN_FILTER,GL_LINEAR));
     GL_EXPR(glSamplerParameterf(gl_sampler,GL_TEXTURE_MAG_FILTER,GL_LINEAR));
@@ -618,6 +639,7 @@ BlockRequestInfo BlockVolumeRenderer::getBlockRequestInfo() {
 }
 
 void BlockVolumeRenderer::setupVolumeDataInfo() {
+    spdlog::info("{0}",__FUNCTION__ );
     auto volume_data_info=volume_manager->getVolumeDataInfo();
     this->block_length=volume_data_info.block_length;
     this->padding=volume_data_info.padding;
@@ -626,6 +648,7 @@ void BlockVolumeRenderer::setupVolumeDataInfo() {
 }
 
 void BlockVolumeRenderer::setupGPUMemory() {
+    spdlog::info("{0}",__FUNCTION__ );
     int nx=(window_width+block_length-1)/block_length*2;
     int ny=(window_height+block_length-1)/block_length*2;
     vol_tex_block_nx=nx;
@@ -696,9 +719,11 @@ void BlockVolumeRenderer::setupController()
     };
     mouse_button_callback=[&](GLFWwindow* window, int button, int action, int mods){
         if(button==GLFW_MOUSE_BUTTON_LEFT && action==GLFW_PRESS){
-//            print("mouse button left pressed");
+            this->should_redraw=true;
+            print("mouse button left pressed");
         }
         else if(button==GLFW_MOUSE_BUTTON_RIGHT && action==GLFW_PRESS){
+            this->should_redraw=true;
 //            print("mouse button right pressed");
         }
     };
@@ -715,13 +740,15 @@ void BlockVolumeRenderer::setupController()
         last_x=xpos;
         last_y=ypos;
         if(glfwGetMouseButton(window,GLFW_MOUSE_BUTTON_LEFT)==GLFW_PRESS){
-
+            this->should_redraw=true;
         }
         else if(glfwGetMouseButton(window,GLFW_MOUSE_BUTTON_RIGHT)==GLFW_PRESS){
+            this->should_redraw=true;
             camera->processMouseMove(delta_x,delta_y);
         }
     };
     scroll_callback=[&](GLFWwindow *window, double xoffset, double yoffset){
+        this->should_redraw=true;
         camera->processMouseScroll(yoffset);
     };
     keyboard_callback=[&](GLFWwindow *window, int key, int scancode, int action, int mods){
@@ -729,6 +756,7 @@ void BlockVolumeRenderer::setupController()
             glfwSetWindowShouldClose(window, true);
         }
         if(key==GLFW_KEY_F && action==GLFW_PRESS){
+            this->should_redraw=true;
             camera->processKeyForArg(sv::CameraDefinedKey::MOVE_FASTER);
         }
 
@@ -740,18 +768,30 @@ void BlockVolumeRenderer::setupController()
     glfwSetKeyCallback(window,glfw_keyboard_callback);
 
     process_input=[&](GLFWwindow *window,float delta_time){
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
             camera->processMovementByKey(sv::CameraMoveDirection::FORWARD, delta_time);
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+            this->should_redraw=true;
+        }
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
             camera->processMovementByKey(sv::CameraMoveDirection::BACKWARD, delta_time);
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            this->should_redraw=true;
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
             camera->processMovementByKey(sv::CameraMoveDirection::LEFT, delta_time);
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            this->should_redraw=true;
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
             camera->processMovementByKey(sv::CameraMoveDirection::RIGHT, delta_time);
-        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+            this->should_redraw=true;
+        }
+        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){
             camera->processMovementByKey(sv::CameraMoveDirection::UP, delta_time);
-        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+            this->should_redraw=true;
+        }
+        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS){
             camera->processMovementByKey(sv::CameraMoveDirection::DOWN, delta_time);
+            this->should_redraw=true;
+        }
     };
 }
 
